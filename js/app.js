@@ -117,6 +117,11 @@ class EduSyncApp {
       this.confirmPairing();
     });
 
+    // Radar Back Button
+    document.getElementById('btn-radar-back')?.addEventListener('click', () => {
+      this.goBackFromRadar();
+    });
+
     // Resume transfer button
     document.getElementById('btn-resume-transfer')?.addEventListener('click', () => {
       this.resumeInterruptedTransfer();
@@ -533,17 +538,18 @@ class EduSyncApp {
     this.discoveredPeers.forEach((peer, idx) => {
       const item = document.createElement('div');
       item.className = 'peer-card';
+      item.style.cursor = 'pointer';
       item.innerHTML = `
         <div class="peer-info">
           <h4>📱 ${peer.name}</h4>
           <p>${peer.role === 'teacher' ? 'Teacher' : 'Student'} &bull; Class ${peer.class}</p>
         </div>
-        <button class="btn-primary btn-sm" style="width:auto;" data-peer-idx="${idx}">
+        <button class="btn-primary btn-sm" style="width:auto;" onclick="event.stopPropagation(); window.eduApp.openPairingModal(${idx});">
           ${window.i18n.t('connect')}
         </button>
       `;
       
-      item.querySelector('button').addEventListener('click', () => {
+      item.addEventListener('click', () => {
         this.openPairingModal(idx);
       });
 
@@ -776,8 +782,10 @@ class EduSyncApp {
   }
 }
 
-// Instantiate on DOM load
-window.addEventListener('DOMContentLoaded', () => {
-  window.eduApp = new EduSyncApp();
+// Instantiate globally and initialize
+window.eduApp = new EduSyncApp();
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', () => window.eduApp.init());
+} else {
   window.eduApp.init();
-});
+}
