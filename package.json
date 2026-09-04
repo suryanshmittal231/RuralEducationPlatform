@@ -1,0 +1,27 @@
+{
+  "name": "edusync",
+  "version": "1.0.0",
+  "description": "Offline Rural Education Platform with Real Bluetooth P2P Synchronization",
+  "main": "index.html",
+  "scripts": {
+    "build": "node scripts/build-web.js",
+    "sync": "node scripts/build-web.js && npx cap sync android",
+    "android": "npx cap open android"
+  },
+  "keywords": [
+    "education",
+    "offline",
+    "p2p",
+    "bluetooth",
+    "capacitor",
+    "sih"
+  ],
+  "author": "EduSync Team",
+  "license": "MIT",
+  "dependencies": {
+    "@capacitor-community/bluetooth-le": "^6.0.0",
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/core": "^6.2.0"
+  }
+}
