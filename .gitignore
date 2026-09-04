@@ -4,3 +4,4 @@ android/build/
 android/app/build/
 .gradle/
 *.log
+*.apk
