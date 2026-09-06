@@ -1,20 +1,30 @@
 // EduSync Smart Differential Synchronization Engine
-// Handles true peer-to-peer data exchange, chunked serialization, and IndexedDB reconciliation
+// Handles differential comparison, Bluetooth stream reconciliation, and IndexedDB persistence
 
 class EduSyncEngine {
   constructor(db, transport) {
     this.db = db;
     this.transport = transport;
+    this.latestTeacherManifest = null;
 
     this.initIncomingListeners();
   }
 
   // Listen for incoming data packets and persist them to local IndexedDB
   initIncomingListeners() {
-    // When incoming resource data is completely reassembled
+    // When teacher receives manifest or student receives teacher manifest
+    this.transport.on('manifestReceived', async (manifest) => {
+      console.log(`[SyncEngine] Processing received manifest (${manifest.length} items)...`);
+      this.latestTeacherManifest = manifest;
+      if (window.eduApp && window.eduApp.onPeerManifestReceived) {
+        window.eduApp.onPeerManifestReceived(manifest);
+      }
+    });
+
+    // When complete resource data is reassembled over Bluetooth
     this.transport.on('chunkReceived', async (data) => {
       if (data && data.resource) {
-        console.log('[SyncEngine] Received complete resource over transport:', data.resource.title);
+        console.log('[SyncEngine] Received complete educational resource:', data.resource.title);
         const resourceToSave = {
           ...data.resource,
           isAvailableOffline: true,
@@ -22,13 +32,17 @@ class EduSyncEngine {
         };
         await this.db.addResource(resourceToSave);
         console.log('[SyncEngine] Resource persisted to local IndexedDB successfully.');
+
+        if (window.eduApp && window.eduApp.onResourceReceived) {
+          window.eduApp.onResourceReceived(resourceToSave);
+        }
       }
     });
 
     // When teacher receives student quiz submissions
     this.transport.on('resultsReceived', async (submissions) => {
       if (Array.isArray(submissions)) {
-        console.log(`[SyncEngine] Received ${submissions.length} student quiz submissions over transport.`);
+        console.log(`[SyncEngine] Teacher received ${submissions.length} student quiz submissions.`);
         for (const sub of submissions) {
           await this.db.saveQuizSubmission({
             ...sub,
@@ -36,12 +50,15 @@ class EduSyncEngine {
             syncedAt: new Date().toISOString()
           });
         }
-        console.log('[SyncEngine] Submissions persisted to teacher analytics database.');
+        console.log('[SyncEngine] Submissions saved to teacher analytics database.');
+        if (window.eduApp && window.eduApp.refreshCurrentScreen) {
+          window.eduApp.refreshCurrentScreen();
+        }
       }
     });
   }
 
-  // Compare local manifest with peer manifest to determine missing or updated files
+  // Compare local manifest with teacher manifest to determine missing or updated files
   calculateDifferential(localManifest, peerManifest) {
     const localMap = new Map();
     localManifest.forEach(item => {
@@ -51,7 +68,6 @@ class EduSyncEngine {
     });
 
     const missingOnLocal = [];
-    const missingOnPeer = [];
     const upToDate = [];
 
     peerManifest.forEach(peerItem => {
@@ -67,49 +83,57 @@ class EduSyncEngine {
 
     return {
       missingOnLocal,
-      missingOnPeer,
       upToDate,
       totalPeerResources: peerManifest.length,
       totalLocalResources: localManifest.length
     };
   }
 
-  // Execute two-way sync: transfers missing resources AND syncs student quiz submissions
-  async executeTwoWaySync(missingResources, onProgressCallback, testInterruption = false) {
+  // Teacher side: Streams all requested missing resources to the student
+  async streamRequestedResourcesToStudent(resourceIds, onProgressCallback) {
+    console.log(`[Teacher Sync] Streaming ${resourceIds.length} requested resources to student...`);
     const transferred = [];
 
-    // 1. Sync Educational Resources (Send each resource in MTU-friendly chunks)
-    for (let i = 0; i < missingResources.length; i++) {
-      const res = missingResources[i];
-
-      // Fetch the complete resource data with content and attachments from DB if available
-      const fullRes = await this.db.getResource(res.resourceId) || res;
-
-      // Transfer over Bluetooth LE transport
-      await this.transport.transferResourceChunks(
-        fullRes,
-        (progress) => {
+    for (let i = 0; i < resourceIds.length; i++) {
+      const id = resourceIds[i];
+      const fullRes = await this.db.getResource(id);
+      if (fullRes) {
+        console.log(`[Teacher Sync] Sending (${i + 1}/${resourceIds.length}): ${fullRes.title}...`);
+        await this.transport.transferResourceChunks(fullRes, (progress) => {
           if (onProgressCallback) {
             onProgressCallback({
               ...progress,
               itemIndex: i + 1,
-              totalItems: missingResources.length,
+              totalItems: resourceIds.length,
               currentResource: fullRes
             });
           }
-        },
-        testInterruption && i === 0 ? 60 : null
-      );
-
-      // Persist as available offline
-      await this.db.updateResourceOfflineStatus(res.resourceId, true);
-      transferred.push(fullRes);
+        });
+        transferred.push(fullRes);
+      }
     }
 
-    // 2. Sync Offline Quiz Submissions back to Teacher
+    // Send completion acknowledgment
+    await this.transport.sendPacketOverTransport({
+      type: 'SYNC_COMPLETE_ACK',
+      transferredCount: transferred.length
+    });
+
+    console.log('[Teacher Sync] All requested resources transferred successfully.');
+    return transferred;
+  }
+
+  // Student side: Request missing items and execute two-way sync
+  async executeTwoWaySync(missingResources, onProgressCallback, testInterruption = false) {
+    const missingIds = missingResources.map(r => r.resourceId);
+
+    // 1. Request missing resources from teacher
+    await this.transport.requestMissingResources(missingIds);
+
+    // 2. Also send any pending offline quiz submissions back to teacher
     const pendingSubmissions = await this.db.getPendingSubmissions();
     if (pendingSubmissions.length > 0) {
-      console.log(`[SyncEngine] Syncing ${pendingSubmissions.length} pending quiz submissions...`);
+      console.log(`[SyncEngine] Uploading ${pendingSubmissions.length} pending quiz submissions to Teacher...`);
       await this.transport.sendQuizResults(pendingSubmissions);
       const syncedIds = pendingSubmissions.map(s => s.id);
       await this.db.markSubmissionsAsSynced(syncedIds);
@@ -117,9 +141,8 @@ class EduSyncEngine {
 
     return {
       success: true,
-      transferredCount: transferred.length,
-      syncedQuizResultsCount: pendingSubmissions.length,
-      transferredResources: transferred
+      requestedCount: missingIds.length,
+      syncedQuizResultsCount: pendingSubmissions.length
     };
   }
 }

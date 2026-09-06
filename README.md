@@ -69,7 +69,14 @@ Open **`http://localhost:3000`** in your browser.
 
 ---
 
-### Option 2: Deploy to GitHub Pages (For Peer & Jury Trials)
+### Option 2: Deploy & Install on iPhone (iOS IPA)
+We support full iOS deployment with an automated cloud build workflow:
+1. Push code to GitHub: `git push origin main`
+2. Go to **Actions** ➡ **Build iOS IPA (EduSync)** ➡ Download the **`EduSync-iOS-IPA`** artifact.
+3. Sideload onto iPhone using **Sideloadly** or **AltStore** in 2 minutes (no paid Apple Developer account needed).
+👉 **See detailed instructions**: [IOS_INSTALLATION_GUIDE.md](file:///c:/Users/surya/Downloads/New%20folder/RuralEducationPlatform/IOS_INSTALLATION_GUIDE.md)
+
+### Option 3: Deploy to GitHub Pages (For Peer & Jury Trials)
 This repository is 100% static and ready to deploy with zero build steps:
 
 1. Push this repository to your GitHub account:

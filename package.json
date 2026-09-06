@@ -6,7 +6,12 @@
   "scripts": {
     "build": "node scripts/build-web.js",
     "sync": "node scripts/build-web.js && npx cap sync android",
-    "android": "npx cap open android"
+    "sync:ios": "node scripts/build-web.js && npx cap sync ios",
+    "sync:all": "node scripts/build-web.js && npx cap sync",
+    "android": "npx cap open android",
+    "ios": "npx cap open ios",
+    "serve": "node scripts/serve.js",
+    "start": "node scripts/serve.js"
   },
   "keywords": [
     "education",
@@ -22,6 +27,7 @@
     "@capacitor-community/bluetooth-le": "^6.0.0",
     "@capacitor/android": "^6.2.0",
     "@capacitor/cli": "^6.2.0",
-    "@capacitor/core": "^6.2.0"
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/ios": "^6.2.0"
   }
 }

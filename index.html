@@ -61,7 +61,7 @@
 
         <div class="role-cards-container">
           <!-- Teacher Card -->
-          <div class="role-card teacher-card" id="btn-select-teacher">
+          <div class="role-card teacher-card" id="btn-select-teacher" role="button" tabindex="0" onclick="window.eduApp && window.eduApp.setRole('teacher')">
             <div class="role-icon-box">👩‍🏫</div>
             <div class="role-info">
               <h3 data-i18n="teacher">Teacher</h3>
@@ -70,7 +70,7 @@
           </div>
 
           <!-- Student Card -->
-          <div class="role-card student-card" id="btn-select-student">
+          <div class="role-card student-card" id="btn-select-student" role="button" tabindex="0" onclick="window.eduApp && window.eduApp.setRole('student')">
             <div class="role-icon-box">👨‍🎓</div>
             <div class="role-info">
               <h3 data-i18n="student">Student</h3>
@@ -120,6 +120,8 @@
             <div class="action-icon">📊</div>
             <span data-i18n="studentProgress">Student Progress</span>
           </div>
+        </div>
+
         <div class="sync-diff-box" style="margin-top:10px; background:rgba(0, 210, 255, 0.08); border-color:rgba(0, 210, 255, 0.3); text-align:center;">
           <div style="font-size:0.75rem; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">
             Teacher Bluetooth Pairing Code
@@ -200,6 +202,20 @@
             <div class="action-icon">🔄</div>
             <span data-i18n="syncWithTeacher">Sync with Teacher</span>
           </div>
+        </div>
+
+        <!-- Dedicated Prominent Connect Card -->
+        <div class="sync-diff-box" style="margin-top:14px; background: linear-gradient(135deg, rgba(0, 210, 255, 0.15), rgba(59, 130, 246, 0.1)); border: 1px solid rgba(0, 210, 255, 0.4); text-align: center; cursor: pointer; padding: 16px;" onclick="window.eduApp.renderNearbyRadar()">
+          <div style="font-size: 2rem; margin-bottom: 6px;">📡</div>
+          <div style="font-weight: 800; color: var(--primary); font-size: 1.05rem; letter-spacing: 0.3px;">
+            CONNECT TO TEACHER (BLUETOOTH)
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 4px;">
+            Tap to scan for nearby Teacher's phone, pair with the 4-digit code, and sync lessons
+          </div>
+          <button class="btn-primary" style="margin-top: 10px; width: 100%; font-size: 0.9rem;" onclick="event.stopPropagation(); window.eduApp.renderNearbyRadar(true);">
+            🔍 Search Nearby Devices (Radar)
+          </button>
         </div>
       </section>
 
@@ -317,17 +333,37 @@
       <section class="screen" id="screen-nearby-radar">
         <div class="section-header">
           <h2 class="section-title" data-i18n="nearbyDevices">Nearby Devices Radar</h2>
+          <button class="btn-secondary btn-sm" id="btn-rescan-radar" onclick="window.eduApp.searchNearbyDevices()">🔄 Rescan</button>
         </div>
 
-        <div class="radar-container">
+        <div style="background: rgba(0, 210, 255, 0.08); border: 1px solid rgba(0, 210, 255, 0.2); border-radius: 8px; padding: 10px; font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px; text-align: center; line-height: 1.4;">
+          Ensure the Teacher device has EduSync open. Use the <b>Search bar</b> below to search devices by name, code or MAC, then tap <b>Connect</b>.
+        </div>
+
+        <!-- Nearby Devices Search Bar -->
+        <div class="radar-search-container">
+          <div class="radar-search-input-wrapper">
+            <input type="text" id="radar-search-input" class="radar-search-input" placeholder="🔍 Search device name, teacher, code..." 
+                   oninput="window.eduApp.filterNearbyPeers()" onkeydown="if(event.key==='Enter') window.eduApp.filterNearbyPeers()">
+            <button id="btn-clear-radar-search" class="radar-clear-btn" onclick="window.eduApp.clearRadarSearch()" style="display: none;" title="Clear search">✕</button>
+          </div>
+          <button class="btn-primary" id="btn-do-radar-search" style="width: auto; padding: 10px 16px; font-size: 0.88rem; white-space: nowrap;" onclick="window.eduApp.filterNearbyPeers()">
+            🔍 Search
+          </button>
+        </div>
+
+        <div class="radar-container" id="radar-animation-box">
           <div class="radar-sweep">
             <div class="radar-beam"></div>
             <div class="radar-center-icon">📡</div>
           </div>
-          <div style="margin-top:14px; font-size:0.82rem; color:var(--primary);" data-i18n="searchingNearby">
+          <div id="radar-status-text" style="margin-top:14px; font-size:0.82rem; color:var(--primary);" data-i18n="searchingNearby">
             Scanning for nearby EduSync devices...
           </div>
         </div>
+
+        <!-- Filter Count Banner -->
+        <div id="radar-search-counter" style="display:none; font-size:0.78rem; color:var(--text-secondary); margin-bottom:8px; font-weight:600;"></div>
 
         <div class="peer-list" id="nearby-peers-list"></div>
 
@@ -337,7 +373,10 @@
       <!-- ================= SCREEN 12: SYNC CENTER ================= -->
       <section class="screen" id="screen-sync-center">
         <div class="section-header">
-          <h2 class="section-title" data-i18n="syncCenter">Smart Sync Center</h2>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="btn-secondary btn-sm" id="btn-sync-header-back" onclick="window.eduApp.goBackFromSyncCenter()">⬅ Back</button>
+            <h2 class="section-title" data-i18n="syncCenter" style="margin:0;">Smart Sync Center</h2>
+          </div>
           <span class="status-pill">P2P Ready</span>
         </div>
 
@@ -422,9 +461,20 @@
             <textarea class="form-control" id="res-input-points" rows="3" placeholder="Point 1: Contact vs Non-contact forces&#10;Point 2: Pressure = Force / Area"></textarea>
           </div>
 
+          <!-- Bluetooth Peer Status & Instant Share Toggle -->
+          <div id="add-res-bt-status" style="background: rgba(0, 210, 255, 0.08); border: 1px solid rgba(0, 210, 255, 0.25); border-radius: 8px; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <span id="add-res-bt-indicator">📡 Bluetooth: <b>Checking...</b></span>
+            </div>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; cursor: pointer; color: var(--text-main);">
+              <input type="checkbox" id="res-input-share-immediately" checked>
+              Auto-Share via BT
+            </label>
+          </div>
+
           <div style="display:flex; gap:8px; margin-top:8px;">
             <button type="button" class="btn-secondary" style="flex:1;" id="btn-cancel-add" onclick="document.getElementById('modal-add-resource').classList.remove('active')">Cancel</button>
-            <button type="submit" class="btn-primary" style="flex:2;">💾 Save Resource</button>
+            <button type="submit" class="btn-primary" id="btn-save-and-share" style="flex:2;">💾 Save & Share</button>
           </div>
         </form>
       </div>
@@ -483,10 +533,10 @@
 
   <!-- Scripts -->
   <script src="capacitor.js"></script>
-  <script src="js/i18n.js?v=2.2"></script>
-  <script src="js/db.js?v=2.2"></script>
-  <script src="js/transport.js?v=2.2"></script>
-  <script src="js/syncEngine.js?v=2.2"></script>
-  <script src="js/app.js?v=2.2"></script>
+  <script src="js/i18n.js?v=2.9"></script>
+  <script src="js/db.js?v=2.9"></script>
+  <script src="js/transport.js?v=2.9"></script>
+  <script src="js/syncEngine.js?v=2.9"></script>
+  <script src="js/app.js?v=2.9"></script>
 </body>
 </html>

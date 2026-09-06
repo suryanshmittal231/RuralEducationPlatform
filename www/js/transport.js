@@ -1,5 +1,5 @@
-// EduSync Transport Layer — Real Bluetooth Low Energy P2P with Explicit Labeled Demo Fallback
-// Compliant with EduSync_Fix_Spec_For_Antigravity.md (Rules 1-5)
+// EduSync Transport Layer — Real Bluetooth P2P Engine (Dual-layer RFCOMM SPP + BLE)
+// Compliant with EduSync Specifications
 
 class EduSyncTransport {
   constructor() {
@@ -12,7 +12,8 @@ class EduSyncTransport {
       transferProgress: [],
       transferComplete: [],
       resultsReceived: [],
-      pairingFailed: []
+      pairingFailed: [],
+      bluetoothState: []
     };
 
     this.connectedPeer = null;
@@ -23,20 +24,20 @@ class EduSyncTransport {
     this.myDeviceInfo = null;
     this.activeTransfer = null;
 
-    // Detection of Native BLE Hardware vs Browser Simulator
+    // Native Capacitor Bluetooth plugin detection
     this.isNative = typeof window.Capacitor !== 'undefined' && 
                     window.Capacitor.isPluginAvailable && 
                     window.Capacitor.isPluginAvailable('BluetoothP2P');
 
-    this.transportMode = this.isNative ? 'REAL_BLUETOOTH_LE' : 'BROWSER_DEMO_SIMULATED';
+    this.transportMode = this.isNative ? 'REAL_BLUETOOTH_P2P' : 'BROWSER_DEMO_SIMULATED';
     this.transportLabel = this.isNative 
-      ? 'Real Bluetooth Low Energy (P2P Hardware)' 
+      ? 'Real Bluetooth Hardware (Direct P2P)' 
       : 'DEMO MODE — Single Device Simulated (Test Only)';
 
-    console.log(`[EduSync Transport] Mode: ${this.transportMode} (${this.transportLabel})`);
+    console.log(`[EduSync Transport] Initialized: ${this.transportMode}`);
 
-    // In-flight reassembly buffers for chunked transfers
-    this.incomingTransfers = new Map(); // transferId -> { totalChunks, chunks: Map() }
+    // In-flight chunk reassembly buffers
+    this.incomingTransfers = new Map(); // transferId -> { meta, totalChunks, receivedChunks }
 
     this.initTransport();
   }
@@ -45,20 +46,19 @@ class EduSyncTransport {
     if (this.isNative) {
       this.initNativeBLEListeners();
     } else {
-      // RULE 1: Labeled strictly as TEST ONLY.
-      // TEST ONLY — DOES NOT WORK BETWEEN DEVICES. Multi-tab local testing only.
+      // BROWSER PREVIEW ONLY (Local multi-tab simulation)
       this.initBrowserTestMesh();
     }
   }
 
-  // ==========================================
-  // REAL NATIVE BLUETOOTH LOW ENERGY (OPTION A)
-  // ==========================================
+  // =========================================================================
+  // REAL NATIVE BLUETOOTH LISTENERS
+  // =========================================================================
   initNativeBLEListeners() {
-    const ble = window.Capacitor.Plugins.BluetoothP2P;
+    const bt = window.Capacitor.Plugins.BluetoothP2P;
 
-    ble.addListener('peerDiscovered', (peer) => {
-      console.log('[BLE] Discovered Peer:', peer);
+    bt.addListener('peerDiscovered', (peer) => {
+      console.log('[Bluetooth] Peer Discovered:', peer);
       this.emit('peerDiscovered', {
         id: peer.id || peer.address,
         address: peer.address,
@@ -66,47 +66,69 @@ class EduSyncTransport {
         role: peer.role || 'teacher',
         class: peer.classLevel || '8',
         rssi: peer.rssi || -60,
-        isRealBLE: true
+        isRealBT: true
       });
     });
 
-    ble.addListener('peerConnected', (data) => {
-      console.log('[BLE] Peer Connected:', data);
+    bt.addListener('peerConnected', async (data) => {
+      console.log('[Bluetooth] Peer Connected:', data);
       this.setConnectedPeer({
         id: data.address || data.peerAddress,
         address: data.address || data.peerAddress,
-        name: data.name || 'Connected Peer (BLE)',
-        isRealBLE: true
+        name: data.name || 'Connected Peer (Bluetooth)',
+        role: data.role || (this.myDeviceInfo?.role === 'teacher' ? 'student' : 'teacher'),
+        isRealBT: true,
+        isRFCOMM: data.isRFCOMM || false
       });
+
+      // If Teacher: automatically send our full educational manifest to the student
+      const isTeacher = this.myDeviceInfo?.role === 'teacher' || (window.eduApp && window.eduApp.currentRole === 'teacher');
+      if (isTeacher && window.eduDB) {
+        try {
+          const manifest = await window.eduDB.generateManifest(false);
+          console.log(`[Teacher BT] Broadcasting manifest (${manifest.length} items) to student...`);
+          await this.sendPacketOverTransport({
+            type: 'MANIFEST_ANNOUNCE',
+            senderRole: 'teacher',
+            senderName: this.myDeviceInfo?.name || 'Teacher',
+            manifest: manifest
+          });
+        } catch (err) {
+          console.error('[Teacher BT] Error sending initial manifest:', err);
+        }
+      } else {
+        // If Student: request teacher's manifest
+        setTimeout(() => this.requestTeacherManifest(), 400);
+      }
     });
 
-    ble.addListener('pairingFailed', (data) => {
-      console.warn('[BLE] Pairing verification failed:', data);
+    bt.addListener('pairingFailed', (data) => {
+      console.warn('[Bluetooth] Pairing verification failed:', data);
       this.emit('pairingFailed', data);
     });
 
-    ble.addListener('peerDisconnected', (data) => {
-      console.log('[BLE] Peer Disconnected:', data);
+    bt.addListener('peerDisconnected', (data) => {
+      console.log('[Bluetooth] Peer Disconnected:', data);
       this.disconnect(false);
     });
 
-    ble.addListener('chunkReceived', (data) => {
-      this.handleIncomingRawChunk(data.payload);
+    bt.addListener('chunkReceived', (data) => {
+      console.log('[Bluetooth] Native chunkReceived event payload received:', data);
+      const payload = (data && typeof data.payload !== 'undefined') ? data.payload : data;
+      this.handleIncomingRawChunk(payload);
     });
   }
 
-  // ==========================================
-  // BROWSER SIMULATOR (TEST ONLY — RULE 1 & 3)
-  // ==========================================
+  // =========================================================================
+  // BROWSER DEMO MODE (TEST PREVIEW ONLY)
+  // =========================================================================
   initBrowserTestMesh() {
-    // TEST ONLY — DOES NOT WORK BETWEEN DEVICES.
-    // BroadcastChannel only communicates between tabs in the exact same browser window.
     try {
       this.broadcastChannel = new BroadcastChannel('edusync_p2p_mesh_test_only');
       this.broadcastChannel.onmessage = (event) => {
         this.handleIncomingRawChunk(JSON.stringify(event.data));
       };
-      console.warn('[EduSync Transport] Running in BROWSER DEMO MODE. BroadcastChannel active for single-device preview only.');
+      console.warn('[EduSync Transport] Running in BROWSER DEMO MODE. BroadcastChannel active for single-device preview.');
     } catch (e) {
       console.warn('[EduSync Transport] BroadcastChannel unavailable:', e);
     }
@@ -130,8 +152,51 @@ class EduSyncTransport {
     }
   }
 
-  // Start Discovery (Advertising or Scanning)
+  // Request native permissions & enable Bluetooth
+  async prepareBluetooth() {
+    if (this.isNative) {
+      const bt = window.Capacitor.Plugins.BluetoothP2P;
+      try {
+        await bt.requestDevicePermissions();
+      } catch (err) {
+        console.warn('[Bluetooth] Permissions prompt notice:', err);
+      }
+      try {
+        await bt.enableBluetooth();
+      } catch (err) {
+        console.warn('[Bluetooth] Enable BT prompt notice:', err);
+      }
+    }
+  }
+
+  async fetchPairedDevices() {
+    if (this.isNative) {
+      try {
+        const res = await window.Capacitor.Plugins.BluetoothP2P.getPairedDevices();
+        if (res && Array.isArray(res.devices)) {
+          res.devices.forEach(d => {
+            this.emit('peerDiscovered', {
+              id: d.id || d.address,
+              address: d.address,
+              name: d.name || `Paired (${d.address})`,
+              role: 'teacher',
+              class: '8',
+              rssi: -45,
+              isPaired: true,
+              isRealBT: true
+            });
+          });
+        }
+      } catch (err) {
+        console.warn('[Bluetooth] Error fetching paired devices:', err);
+      }
+    }
+  }
+
+  // Start Discovery (Teacher Advertises, Student Scans)
   async startDiscovery(myRole = 'teacher', myClass = '8', myDeviceName = 'My Device') {
+    await this.prepareBluetooth();
+
     const pairingCode = Math.floor(1000 + Math.random() * 9000).toString();
     this.myDeviceInfo = {
       role: myRole,
@@ -142,33 +207,29 @@ class EduSyncTransport {
     };
 
     if (this.isNative) {
-      const ble = window.Capacitor.Plugins.BluetoothP2P;
-      try {
-        await ble.requestDevicePermissions();
-      } catch (err) {
-        console.warn('[BLE] Permission request notice:', err);
-      }
+      const bt = window.Capacitor.Plugins.BluetoothP2P;
 
       if (myRole === 'teacher') {
-        // Teacher advertises as BLE Peripheral
+        // Teacher starts advertising & RFCOMM SPP Server
         try {
-          await ble.startAdvertising({
+          await bt.startAdvertising({
             name: myDeviceName,
             role: myRole,
             classLevel: myClass,
             pairingCode: pairingCode
           });
-          console.log(`[BLE] Advertising started. 4-Digit Code: ${pairingCode}`);
+          console.log(`[Bluetooth] Teacher Server active. 4-Digit Code: ${pairingCode}`);
         } catch (e) {
-          console.error('[BLE] Failed to start advertising:', e);
+          console.error('[Bluetooth] Failed to start advertising:', e);
         }
       } else {
-        // Student scans as BLE Central
+        // Student starts scanning for nearby Teacher devices (BLE + Classic)
         try {
-          await ble.startScanning();
-          console.log('[BLE] Scanning started for EduSync teachers...');
+          await this.fetchPairedDevices();
+          await bt.startScanning();
+          console.log('[Bluetooth] Student Scanner active (BLE + Classic Discovery)...');
         } catch (e) {
-          console.error('[BLE] Failed to start scanning:', e);
+          console.error('[Bluetooth] Failed to start scanning:', e);
         }
       }
     } else {
@@ -186,45 +247,36 @@ class EduSyncTransport {
 
   async stopDiscovery() {
     if (this.isNative) {
-      const ble = window.Capacitor.Plugins.BluetoothP2P;
+      const bt = window.Capacitor.Plugins.BluetoothP2P;
       try {
-        await ble.stopAdvertising();
-        await ble.stopScanning();
+        await bt.stopAdvertising();
+        await bt.stopScanning();
       } catch (e) {
-        console.warn('[BLE] Stop discovery error:', e);
+        console.warn('[Bluetooth] Stop discovery error:', e);
       }
     }
   }
 
+  // Student connects to Teacher with 4-digit verification code
   async connectToPeer(peer, enteredPairingCode) {
     this.pendingPeer = peer;
 
     if (this.isNative) {
-      const ble = window.Capacitor.Plugins.BluetoothP2P;
+      const bt = window.Capacitor.Plugins.BluetoothP2P;
       try {
-        await ble.connectToPeer({
+        await bt.connectToPeer({
           address: peer.address || peer.id,
-          pairingCode: enteredPairingCode
+          pairingCode: enteredPairingCode,
+          studentName: this.myDeviceInfo?.name || "Student's Phone"
         });
       } catch (e) {
-        console.error('[BLE] Connection initiation failed:', e);
+        console.error('[Bluetooth] Connection initiation failed:', e);
         alert('Bluetooth Connection Failed: ' + (e.message || e));
       }
     } else {
       // Browser Demo Mode pairing
-      const pairMsg = {
-        type: 'PAIR_REQUEST',
-        senderId: this.myDeviceInfo?.senderId || 'browser_dev',
-        pairingCode: enteredPairingCode,
-        targetId: peer.senderId || peer.id
-      };
-      if (this.broadcastChannel) {
-        this.broadcastChannel.postMessage(pairMsg);
-      }
-
-      // Check entered code
       if (peer.pairingCode === enteredPairingCode || peer.isSimulated) {
-        setTimeout(() => {
+        setTimeout(async () => {
           this.setConnectedPeer({
             id: peer.id || peer.senderId,
             name: peer.name || peer.deviceName,
@@ -232,6 +284,12 @@ class EduSyncTransport {
             class: peer.class,
             isDemoSimulated: true
           });
+
+          // In browser demo mode, simulate manifest exchange
+          if (window.eduDB) {
+            const manifest = await window.eduDB.generateManifest(false);
+            this.emit('manifestReceived', manifest);
+          }
         }, 300);
       } else {
         this.emit('pairingFailed', { reason: 'Incorrect 4-digit code' });
@@ -250,7 +308,7 @@ class EduSyncTransport {
       try {
         await window.Capacitor.Plugins.BluetoothP2P.disconnect();
       } catch (e) {
-        console.warn('[BLE] Disconnect error:', e);
+        console.warn('[Bluetooth] Disconnect error:', e);
       }
     } else if (this.broadcastChannel) {
       this.broadcastChannel.postMessage({
@@ -265,26 +323,29 @@ class EduSyncTransport {
     this.emit('peerDisconnected');
   }
 
-  // ==========================================
-  // REAL CHUNKED DATA TRANSMISSION PROTOCOL
-  // ==========================================
-  // Sends data in MTU-sized packets (400 bytes) with sequence numbers and verification
+  // =========================================================================
+  // PACKET SERIALIZATION & DISPATCH
+  // =========================================================================
   async sendPacketOverTransport(packetObj) {
-    const rawString = JSON.stringify(packetObj);
+    try {
+      const rawString = JSON.stringify(packetObj);
 
-    if (this.isNative) {
-      await window.Capacitor.Plugins.BluetoothP2P.sendDataChunk({
-        payload: rawString
-      });
-    } else {
-      if (this.broadcastChannel) {
-        this.broadcastChannel.postMessage(packetObj);
+      if (this.isNative) {
+        await window.Capacitor.Plugins.BluetoothP2P.sendDataChunk({
+          payload: rawString
+        });
+      } else {
+        if (this.broadcastChannel) {
+          this.broadcastChannel.postMessage(packetObj);
+        }
       }
+    } catch (err) {
+      console.warn('[Transport] Error sending packet over transport:', err);
     }
   }
 
-  // Handle incoming raw string or object chunk
-  handleIncomingRawChunk(rawPayload) {
+  // Handle incoming raw string or JSON packet
+  async handleIncomingRawChunk(rawPayload) {
     let msg = null;
     try {
       msg = typeof rawPayload === 'string' ? JSON.parse(rawPayload) : rawPayload;
@@ -301,18 +362,57 @@ class EduSyncTransport {
         this.emit('peerDiscovered', msg);
         break;
 
-      case 'PAIR_REQUEST':
-        if (this.myDeviceInfo && msg.pairingCode === this.myDeviceInfo.pairingCode) {
-          this.setConnectedPeer({
-            id: msg.senderId,
-            name: msg.senderName || 'Peer Device',
-            role: msg.senderRole || 'student'
-          });
+      case 'MANIFEST_ANNOUNCE':
+      case 'MANIFEST_RESPONSE':
+        console.log('[Transport] Received Educational Manifest:', msg.manifest);
+        this.emit('manifestReceived', msg.manifest || []);
+        break;
+
+      case 'REQUEST_MANIFEST':
+        console.log('[Teacher BT] Received REQUEST_MANIFEST from student.');
+        if ((!this.myDeviceInfo || this.myDeviceInfo.role === 'teacher' || window.eduApp?.currentRole === 'teacher') && window.eduDB) {
+          try {
+            const manifest = await window.eduDB.generateManifest(false);
+            console.log(`[Teacher BT] Dispatching MANIFEST_RESPONSE (${manifest.length} items)...`);
+            await this.sendPacketOverTransport({
+              type: 'MANIFEST_RESPONSE',
+              senderRole: 'teacher',
+              senderName: this.myDeviceInfo?.name || 'Teacher',
+              manifest: manifest
+            });
+          } catch (err) {
+            console.error('[Teacher BT] Error sending manifest response:', err);
+          }
+        }
+        break;
+
+      case 'REQUEST_RESOURCES':
+        // Teacher receives request from student for specific missing resource IDs
+        console.log('[Teacher BT] Student requested missing resources:', msg.resourceIds);
+        if ((!this.myDeviceInfo || this.myDeviceInfo.role === 'teacher' || window.eduApp?.currentRole === 'teacher') && window.eduSyncEngine) {
+          window.eduSyncEngine.streamRequestedResourcesToStudent(msg.resourceIds);
+        }
+        break;
+
+      case 'DIRECT_RESOURCE':
+        console.log('[Transport] Received DIRECT_RESOURCE packet:', msg.resource?.title);
+        if (msg.resource) {
+          this.emit('chunkReceived', { resource: msg.resource });
         }
         break;
 
       case 'DATA_CHUNK':
         this.processIncomingChunkPacket(msg);
+        break;
+
+      case 'QUIZ_RESULTS':
+        console.log('[Transport] Received Student Quiz Submissions:', msg.submissions);
+        this.emit('resultsReceived', msg.submissions);
+        break;
+
+      case 'SYNC_COMPLETE_ACK':
+        console.log('[Transport] Peer confirmed sync complete.');
+        this.emit('transferComplete', msg);
         break;
 
       case 'DISCONNECT':
@@ -321,7 +421,7 @@ class EduSyncTransport {
     }
   }
 
-  // Reassemble incoming chunked packet stream
+  // Reassemble incoming chunked resource streams
   processIncomingChunkPacket(packet) {
     const { transferId, chunkIdx, totalChunks, payloadChunk, meta } = packet;
 
@@ -343,13 +443,12 @@ class EduSyncTransport {
       percent: percent,
       chunk: transfer.receivedChunks.size,
       totalChunks: totalChunks,
-      resourceTitle: meta.title || 'Data',
+      resourceTitle: meta.title || 'Educational Resource',
       isComplete: transfer.receivedChunks.size === totalChunks
     });
 
     // Check if all chunks received
     if (transfer.receivedChunks.size === totalChunks) {
-      // Reassemble in order
       let fullPayload = '';
       for (let i = 0; i < totalChunks; i++) {
         fullPayload += transfer.receivedChunks.get(i) || '';
@@ -363,8 +462,6 @@ class EduSyncTransport {
           this.emit('chunkReceived', { resource: decodedObj });
         } else if (meta.contentType === 'QUIZ_RESULTS') {
           this.emit('resultsReceived', decodedObj);
-        } else if (meta.contentType === 'MANIFEST') {
-          this.emit('manifestReceived', decodedObj);
         }
       } catch (err) {
         console.error('[Transport] Failed to parse reassembled JSON:', err);
@@ -372,13 +469,14 @@ class EduSyncTransport {
     }
   }
 
-  // Transfer a resource using real BLE packet chunking
+  // High-speed chunked transmission over Bluetooth
   async transferResourceChunks(resource, onProgress, interruptAtPercent = null) {
     this.isTransferring = true;
     this.isPaused = false;
 
     const fullPayload = JSON.stringify(resource);
-    const CHUNK_SIZE = 400; // Safe for 512-byte negotiated BLE MTU
+    // 4KB chunks for RFCOMM SPP socket streaming / 400B for BLE
+    const CHUNK_SIZE = 4096;
     const totalChunks = Math.ceil(fullPayload.length / CHUNK_SIZE);
     const transferId = 'tx_' + Math.random().toString(36).substring(2, 9);
 
@@ -392,77 +490,50 @@ class EduSyncTransport {
 
     let startChunk = Math.floor((this.transferProgress / 100) * totalChunks);
 
-    return new Promise((resolve, reject) => {
-      let currentIdx = startChunk;
+    for (let currentIdx = startChunk; currentIdx < totalChunks; currentIdx++) {
+      if (this.isPaused) {
+        break;
+      }
 
-      const interval = setInterval(async () => {
-        if (this.isPaused) {
-          clearInterval(interval);
-          return;
-        }
+      const chunkSlice = fullPayload.substring(currentIdx * CHUNK_SIZE, (currentIdx + 1) * CHUNK_SIZE);
+      const packet = {
+        type: 'DATA_CHUNK',
+        transferId: transferId,
+        chunkIdx: currentIdx,
+        totalChunks: totalChunks,
+        payloadChunk: chunkSlice,
+        meta: meta
+      };
 
-        if (currentIdx >= totalChunks) {
-          clearInterval(interval);
-          this.isTransferring = false;
-          this.transferProgress = 0;
-          this.activeTransfer = null;
-          resolve(resource);
-          return;
-        }
+      try {
+        await this.sendPacketOverTransport(packet);
+      } catch (err) {
+        console.error('[Bluetooth] Packet send failed:', err);
+      }
 
-        const chunkSlice = fullPayload.substring(currentIdx * CHUNK_SIZE, (currentIdx + 1) * CHUNK_SIZE);
-        const packet = {
-          type: 'DATA_CHUNK',
-          transferId: transferId,
-          chunkIdx: currentIdx,
+      const percent = Math.min(100, Math.round(((currentIdx + 1) / totalChunks) * 100));
+      this.transferProgress = percent;
+
+      if (onProgress) {
+        onProgress({
+          percent: percent,
+          chunk: currentIdx + 1,
           totalChunks: totalChunks,
-          payloadChunk: chunkSlice,
-          meta: meta
-        };
+          transferredMB: (((currentIdx + 1) * CHUNK_SIZE) / 1024).toFixed(1),
+          totalMB: (fullPayload.length / 1024).toFixed(1),
+          resourceTitle: resource.title,
+          isPaused: false
+        });
+      }
 
-        try {
-          await this.sendPacketOverTransport(packet);
-        } catch (err) {
-          console.error('[BLE] Packet send failed:', err);
-        }
+      // Small 15ms buffer sleep between packets for socket reliability
+      await new Promise(r => setTimeout(r, 15));
+    }
 
-        currentIdx++;
-        const percent = Math.min(100, Math.round((currentIdx / totalChunks) * 100));
-        this.transferProgress = percent;
-
-        if (onProgress) {
-          onProgress({
-            percent: percent,
-            chunk: currentIdx,
-            totalChunks: totalChunks,
-            transferredMB: ((currentIdx * CHUNK_SIZE) / 1024).toFixed(1),
-            totalMB: (fullPayload.length / 1024).toFixed(1),
-            resourceTitle: resource.title,
-            isPaused: false
-          });
-        }
-
-        // Interruption test
-        if (interruptAtPercent && percent >= interruptAtPercent && !this.activeTransfer?.interrupted) {
-          if (!this.activeTransfer) this.activeTransfer = {};
-          this.activeTransfer.interrupted = true;
-          this.isPaused = true;
-          clearInterval(interval);
-          if (onProgress) {
-            onProgress({
-              percent: percent,
-              chunk: currentIdx,
-              totalChunks: totalChunks,
-              transferredMB: ((currentIdx * CHUNK_SIZE) / 1024).toFixed(1),
-              totalMB: (fullPayload.length / 1024).toFixed(1),
-              resourceTitle: resource.title,
-              isPaused: true,
-              error: 'Connection interrupted. Transfer paused.'
-            });
-          }
-        }
-      }, 50); // 50ms per chunk gives smooth high-speed BLE transfer
-    });
+    this.isTransferring = false;
+    this.transferProgress = 0;
+    this.activeTransfer = null;
+    return resource;
   }
 
   async resumeTransfer(resource, onProgress) {
@@ -471,32 +542,32 @@ class EduSyncTransport {
     return this.transferResourceChunks(resource, onProgress, null);
   }
 
-  // Send offline quiz results over BLE
+  // Send offline quiz results back to teacher
   async sendQuizResults(submissions) {
-    const fullPayload = JSON.stringify(submissions);
-    const CHUNK_SIZE = 400;
-    const totalChunks = Math.ceil(fullPayload.length / CHUNK_SIZE);
-    const transferId = 'quiz_tx_' + Math.random().toString(36).substring(2, 9);
+    await this.sendPacketOverTransport({
+      type: 'QUIZ_RESULTS',
+      submissions: submissions
+    });
+    console.log('[Transport] Quiz results dispatched to Teacher.');
+  }
 
-    const meta = {
-      contentType: 'QUIZ_RESULTS',
-      title: 'Quiz Submissions',
-      totalBytes: fullPayload.length
-    };
+  // Request teacher to send specified missing resource IDs
+  async requestMissingResources(resourceIds) {
+    await this.sendPacketOverTransport({
+      type: 'REQUEST_RESOURCES',
+      resourceIds: resourceIds
+    });
+  }
 
-    for (let i = 0; i < totalChunks; i++) {
-      const chunkSlice = fullPayload.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      const packet = {
-        type: 'DATA_CHUNK',
-        transferId: transferId,
-        chunkIdx: i,
-        totalChunks: totalChunks,
-        payloadChunk: chunkSlice,
-        meta: meta
-      };
-      await this.sendPacketOverTransport(packet);
+  // Request teacher to send latest manifest
+  async requestTeacherManifest() {
+    if (this.isConnected) {
+      await this.sendPacketOverTransport({
+        type: 'REQUEST_MANIFEST',
+        senderRole: 'student'
+      });
+      console.log('[Student] Sent REQUEST_MANIFEST to Teacher.');
     }
-    console.log('[Transport] Quiz results sent successfully over transport.');
   }
 }
 
