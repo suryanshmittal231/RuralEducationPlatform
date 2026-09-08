@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>EduSync — Offline Rural Education Platform | SIH Project</title>
-  <meta name="description" content="EduSync allows teachers and students in rural environments to learn offline and sync educational resources and quiz scores peer-to-peer without internet.">
-  <meta name="theme-color" content="#0a0f1d">
+  <title>EduSync — Offline Education Platform</title>
+  <meta name="description" content="EduSync allows teachers and students to learn offline and sync educational resources and quiz scores peer-to-peer without internet.">
+  <meta name="theme-color" content="#000000">
   
   <!-- PWA Manifest & App Icons -->
   <link rel="manifest" href="manifest.json">
@@ -22,27 +22,138 @@
     
     <!-- Top Header & Status Bar -->
     <header class="app-header">
-      <div class="brand-badge btn-back-home" title="Go to Role Selector">
-        <img src="assets/icon.svg" alt="EduSync Logo" class="brand-logo">
+      <div class="brand-badge-container">
+        <button class="btn-hamburger" id="btn-hamburger" aria-label="Open navigation menu" aria-expanded="false" title="Menu">
+          <span class="hamburger-bar"></span>
+          <span class="hamburger-bar"></span>
+          <span class="hamburger-bar"></span>
+        </button>
         <span class="brand-title">EduSync</span>
       </div>
 
-      <div class="header-controls">
-        <button class="btn-icon" id="btn-lang-toggle" title="Toggle Language">
-          🌐 <span data-i18n="switchLanguage">हिंदी</span>
-        </button>
-        <div class="status-pill">
-          <span class="status-indicator"></span>
-          <span data-i18n="offlineModeBadge">100% Offline</span>
-        </div>
     </header>
 
-    <!-- Transport Mode Banner (Rule 1 & 3 Compliance) -->
-    <div id="transport-banner" class="transport-banner">
-      <span id="transport-badge" class="transport-badge badge-demo">
-        ⚡ Initializing Transport...
-      </span>
-    </div>
+    <!-- Navigation Drawer Overlay & Panel -->
+    <div class="nav-drawer-backdrop" id="nav-drawer-backdrop"></div>
+    <aside class="nav-drawer" id="nav-drawer" aria-label="App Navigation">
+      <div class="nav-drawer-header">
+        <div class="nav-drawer-brand">
+          <span class="brand-title">EduSync</span>
+          <span class="nav-drawer-role-badge" id="nav-drawer-role-badge">Offline</span>
+        </div>
+        <button class="btn-icon nav-drawer-close" id="btn-close-drawer" aria-label="Close menu">&times;</button>
+      </div>
+
+      <!-- Teacher Navigation Items -->
+      <nav class="nav-drawer-content" id="nav-drawer-menu-teacher" style="display: none;">
+        <div class="nav-group-label" data-i18n="navigation">Navigation</div>
+        <a class="nav-drawer-item" id="drawer-nav-teacher-dashboard" role="button" tabindex="0">
+          <span class="nav-item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          </span>
+          <span class="nav-item-text" data-i18n="dashboard">Dashboard</span>
+        </a>
+        <a class="nav-drawer-item" id="drawer-nav-teacher-resources" role="button" tabindex="0">
+          <span class="nav-item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          </span>
+          <span class="nav-item-text" data-i18n="myResources">My Resources</span>
+        </a>
+        <a class="nav-drawer-item" id="drawer-nav-teacher-nearby" role="button" tabindex="0">
+          <span class="nav-item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+          </span>
+          <span class="nav-item-text" data-i18n="nearbyStudents">Nearby Students</span>
+        </a>
+        <a class="nav-drawer-item" id="drawer-nav-teacher-sync" role="button" tabindex="0">
+          <span class="nav-item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          </span>
+          <span class="nav-item-text" data-i18n="syncCenter">Sync Center</span>
+        </a>
+        <a class="nav-drawer-item" id="drawer-nav-teacher-progress" role="button" tabindex="0">
+          <span class="nav-item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          </span>
+          <span class="nav-item-text" data-i18n="studentProgress">Student Progress</span>
+        </a>
+      </nav>
+
+      <!-- Student Navigation Items -->
+      <nav class="nav-drawer-content" id="nav-drawer-menu-student" style="display: none;">
+        <div class="nav-group-label" data-i18n="navigation">Navigation</div>
+        <a class="nav-drawer-item" id="drawer-nav-student-dashboard" role="button" tabindex="0">
+          <span class="nav-item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          </span>
+          <span class="nav-item-text" data-i18n="dashboard">Dashboard</span>
+        </a>
+        <a class="nav-drawer-item" id="drawer-nav-student-learning" role="button" tabindex="0">
+          <span class="nav-item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          </span>
+          <span class="nav-item-text" data-i18n="myLearning">My Learning</span>
+        </a>
+        <a class="nav-drawer-item" id="drawer-nav-student-quizzes" role="button" tabindex="0">
+          <span class="nav-item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+          </span>
+          <span class="nav-item-text" data-i18n="myQuizzes">My Quizzes</span>
+        </a>
+        <a class="nav-drawer-item" id="drawer-nav-student-progress" role="button" tabindex="0">
+          <span class="nav-item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          </span>
+          <span class="nav-item-text" data-i18n="myProgress">My Progress</span>
+        </a>
+        <a class="nav-drawer-item" id="drawer-nav-student-sync" role="button" tabindex="0">
+          <span class="nav-item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          </span>
+          <span class="nav-item-text" data-i18n="syncWithTeacher">Sync with Teacher</span>
+        </a>
+      </nav>
+
+      <!-- Role-selection / Generic Navigation Items -->
+      <nav class="nav-drawer-content" id="nav-drawer-menu-generic" style="display: none;">
+        <div class="nav-group-label" data-i18n="navigation">Navigation</div>
+        <a class="nav-drawer-item" id="drawer-nav-select-role" role="button" tabindex="0">
+          <span class="nav-item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          </span>
+          <span class="nav-item-text" data-i18n="selectRole">Select Role</span>
+        </a>
+      </nav>
+
+      <!-- Common Drawer Footer Items (Language, About, Switch Role) -->
+      <div class="nav-drawer-footer">
+        <div class="nav-group-label" data-i18n="language">Language</div>
+        <a class="nav-drawer-item nav-drawer-item-action" id="drawer-nav-lang-toggle" role="button" tabindex="0">
+          <span class="nav-item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          </span>
+          <div style="display: flex; flex-direction: column; flex: 1;">
+            <span class="nav-item-text" data-i18n="language">Language</span>
+            <span style="font-size: 0.72rem; color: var(--text-secondary);" id="drawer-current-lang-text">English (हिंदी)</span>
+          </div>
+          <span class="nav-item-badge" id="drawer-lang-badge">Switch</span>
+        </a>
+
+        <div class="nav-group-label" style="margin-top: 8px;">EduSync</div>
+        <a class="nav-drawer-item" id="drawer-nav-about" role="button" tabindex="0">
+          <span class="nav-item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          </span>
+          <span class="nav-item-text" data-i18n="helpAbout">Help / About</span>
+        </a>
+        <a class="nav-drawer-item" id="drawer-nav-switch-role" role="button" tabindex="0">
+          <span class="nav-item-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          </span>
+          <span class="nav-item-text" data-i18n="switchRole">Switch Role</span>
+        </a>
+      </div>
+    </aside>
 
     <!-- Main Content Flow -->
     <main class="app-content">
@@ -62,7 +173,9 @@
         <div class="role-cards-container">
           <!-- Teacher Card -->
           <div class="role-card teacher-card" id="btn-select-teacher" role="button" tabindex="0" onclick="window.eduApp && window.eduApp.setRole('teacher')">
-            <div class="role-icon-box">👩‍🏫</div>
+            <div class="role-icon-box">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            </div>
             <div class="role-info">
               <h3 data-i18n="teacher">Teacher</h3>
               <p data-i18n="teacherDesc">Organize subjects, share lessons & monitor student progress offline.</p>
@@ -71,16 +184,14 @@
 
           <!-- Student Card -->
           <div class="role-card student-card" id="btn-select-student" role="button" tabindex="0" onclick="window.eduApp && window.eduApp.setRole('student')">
-            <div class="role-icon-box">👨‍🎓</div>
+            <div class="role-icon-box">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+            </div>
             <div class="role-info">
               <h3 data-i18n="student">Student</h3>
               <p data-i18n="studentDesc">Access offline classes, take quizzes & sync your work with nearby teachers.</p>
             </div>
           </div>
-        </div>
-
-        <div style="margin-top: auto; text-align: center; font-size: 0.75rem; color: var(--text-muted); padding: 8px 0;">
-          Smart India Hackathon &bull; Offline P2P Mesh Architecture
         </div>
       </section>
 
@@ -89,40 +200,50 @@
         <div class="user-banner">
           <div class="user-welcome-text">
             <h2 data-i18n="welcomeTeacher">Welcome, Teacher</h2>
-            <div style="font-size: 0.78rem; color: var(--text-secondary);">Govt High School &bull; Offline Host</div>
+            <div style="font-size: 0.78rem; color: var(--text-secondary);">Offline Host</div>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
             <span style="font-size: 0.8rem; color: var(--text-secondary);" data-i18n="class">Class:</span>
-            <select class="class-selector-pill class-select">
+            <select class="class-selector-pill class-select" id="teacher-class-select">
               <option value="6">Class 6</option>
               <option value="7">Class 7</option>
               <option value="8" selected>Class 8</option>
               <option value="9">Class 9</option>
               <option value="10">Class 10</option>
+              <option value="11">Class 11</option>
+              <option value="12">Class 12</option>
             </select>
           </div>
         </div>
 
         <div class="action-grid">
           <div class="action-card-btn" id="nav-teacher-resources">
-            <div class="action-icon">📚</div>
+            <div class="action-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            </div>
             <span data-i18n="myResources">My Resources</span>
           </div>
           <div class="action-card-btn" id="nav-teacher-nearby">
-            <div class="action-icon">📱</div>
+            <div class="action-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+            </div>
             <span data-i18n="nearbyStudents">Nearby Students</span>
           </div>
           <div class="action-card-btn" id="nav-teacher-sync">
-            <div class="action-icon">🔄</div>
+            <div class="action-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </div>
             <span data-i18n="syncCenter">Sync Center</span>
           </div>
           <div class="action-card-btn" id="nav-teacher-progress">
-            <div class="action-icon">📊</div>
+            <div class="action-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+            </div>
             <span data-i18n="studentProgress">Student Progress</span>
           </div>
         </div>
 
-        <div class="sync-diff-box" style="margin-top:10px; background:rgba(0, 210, 255, 0.08); border-color:rgba(0, 210, 255, 0.3); text-align:center;">
+        <div class="sync-diff-box" style="margin-top:10px; background: #111111; border-color: #262626; text-align:center;">
           <div style="font-size:0.75rem; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">
             Teacher Bluetooth Pairing Code
           </div>
@@ -135,7 +256,7 @@
         </div>
 
         <button class="btn-primary" id="btn-open-add-resource" style="margin-top: 8px;">
-          ➕ <span data-i18n="addResource">Add Resource</span>
+          <span data-i18n="addResource">Add Resource</span>
         </button>
       </section>
 
@@ -143,11 +264,11 @@
       <section class="screen" id="screen-teacher-resources">
         <div class="section-header">
           <h2 class="section-title" data-i18n="myResources">My Resources</h2>
-          <button class="btn-secondary btn-sm" id="btn-open-add-resource-2">➕ Add</button>
+          <button class="btn-secondary btn-sm" id="btn-open-add-resource-2">Add</button>
         </div>
 
         <!-- Subject Filter Tabs -->
-        <div class="subject-tabs">
+        <div class="subject-tabs" id="teacher-subject-tabs">
           <button class="subject-tab active" data-subject="all">All Subjects</button>
           <button class="subject-tab" data-subject="mathematics" data-i18n="mathematics">Mathematics</button>
           <button class="subject-tab" data-subject="science" data-i18n="science">Science</button>
@@ -159,9 +280,9 @@
         <div class="resource-list" id="teacher-resource-list"></div>
 
         <div style="margin-top: auto; display: flex; gap: 8px;">
-          <button class="btn-secondary" style="flex: 1;" onclick="window.eduApp.setRole('teacher')">⬅ Back</button>
+          <button class="btn-secondary" id="btn-teacher-resources-back" style="flex: 1;" onclick="window.eduApp.goBack()">Back</button>
           <button class="btn-primary" style="flex: 2;" onclick="window.eduApp.renderNearbyRadar()">
-            📡 <span data-i18n="shareWithStudents">Share with Nearby Students</span>
+            <span data-i18n="shareWithStudents">Share with Nearby EduSync Devices</span>
           </button>
         </div>
       </section>
@@ -171,50 +292,62 @@
         <div class="user-banner">
           <div class="user-welcome-text">
             <h2 data-i18n="welcomeStudent">Welcome, Student</h2>
-            <div style="font-size: 0.78rem; color: #34d399;">✓ Device Offline Ready</div>
+            <div style="font-size: 0.78rem; color: #34d399;">Device Offline Ready</div>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
             <span style="font-size: 0.8rem; color: var(--text-secondary);" data-i18n="class">Class:</span>
-            <select class="class-selector-pill class-select">
+            <select class="class-selector-pill class-select" id="student-class-select">
               <option value="6">Class 6</option>
               <option value="7">Class 7</option>
               <option value="8" selected>Class 8</option>
               <option value="9">Class 9</option>
               <option value="10">Class 10</option>
+              <option value="11">Class 11</option>
+              <option value="12">Class 12</option>
             </select>
           </div>
         </div>
 
         <div class="action-grid">
           <div class="action-card-btn" id="nav-student-learning">
-            <div class="action-icon">📖</div>
+            <div class="action-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            </div>
             <span data-i18n="myLearning">My Learning</span>
           </div>
           <div class="action-card-btn" id="nav-student-quizzes">
-            <div class="action-icon">✍️</div>
+            <div class="action-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+            </div>
             <span data-i18n="myQuizzes">My Quizzes</span>
           </div>
           <div class="action-card-btn" id="nav-student-progress">
-            <div class="action-icon">📊</div>
+            <div class="action-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+            </div>
             <span data-i18n="myProgress">My Progress</span>
           </div>
           <div class="action-card-btn" id="nav-student-sync">
-            <div class="action-icon">🔄</div>
+            <div class="action-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </div>
             <span data-i18n="syncWithTeacher">Sync with Teacher</span>
           </div>
         </div>
 
         <!-- Dedicated Prominent Connect Card -->
-        <div class="sync-diff-box" style="margin-top:14px; background: linear-gradient(135deg, rgba(0, 210, 255, 0.15), rgba(59, 130, 246, 0.1)); border: 1px solid rgba(0, 210, 255, 0.4); text-align: center; cursor: pointer; padding: 16px;" onclick="window.eduApp.renderNearbyRadar()">
-          <div style="font-size: 2rem; margin-bottom: 6px;">📡</div>
-          <div style="font-weight: 800; color: var(--primary); font-size: 1.05rem; letter-spacing: 0.3px;">
+        <div class="sync-diff-box" style="margin-top:14px; background: #121212; border: 1px solid #282828; text-align: center; cursor: pointer; padding: 18px;" onclick="window.eduApp.renderNearbyRadar()">
+          <div style="width: 40px; height: 40px; margin: 0 auto 8px; color: var(--primary); display: flex; align-items: center; justify-content: center;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+          </div>
+          <div style="font-weight: 800; color: var(--primary); font-size: 1rem; letter-spacing: 0.3px;">
             CONNECT TO TEACHER (BLUETOOTH)
           </div>
           <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 4px;">
-            Tap to scan for nearby Teacher's phone, pair with the 4-digit code, and sync lessons
+            Scan for nearby Teacher device, pair with 4-digit code, and sync lessons
           </div>
-          <button class="btn-primary" style="margin-top: 10px; width: 100%; font-size: 0.9rem;" onclick="event.stopPropagation(); window.eduApp.renderNearbyRadar(true);">
-            🔍 Search Nearby Devices (Radar)
+          <button class="btn-primary" style="margin-top: 12px; width: 100%; font-size: 0.9rem;" onclick="event.stopPropagation(); window.eduApp.renderNearbyRadar();">
+            Search Nearby Devices (Radar)
           </button>
         </div>
       </section>
@@ -223,10 +356,10 @@
       <section class="screen" id="screen-student-learning">
         <div class="section-header">
           <h2 class="section-title" data-i18n="myLearning">My Learning Library</h2>
-          <button class="btn-secondary btn-sm" onclick="window.eduApp.openSyncCenter()">🔄 Sync</button>
+          <button class="btn-secondary btn-sm" onclick="window.eduApp.openSyncCenter()">Sync</button>
         </div>
 
-        <div class="subject-tabs">
+        <div class="subject-tabs" id="student-subject-tabs">
           <button class="subject-tab active" data-subject="all">All</button>
           <button class="subject-tab" data-subject="mathematics" data-i18n="mathematics">Mathematics</button>
           <button class="subject-tab" data-subject="science" data-i18n="science">Science</button>
@@ -236,7 +369,7 @@
 
         <div class="resource-list" id="student-resource-list"></div>
 
-        <button class="btn-secondary" style="margin-top:auto;" onclick="window.eduApp.setRole('student')">⬅ Back</button>
+        <button class="btn-secondary" id="btn-student-learning-back" style="margin-top:auto;" onclick="window.eduApp.goBack()">Back</button>
       </section>
 
       <!-- ================= SCREEN 6: STUDENT QUIZZES LIST ================= -->
@@ -248,7 +381,7 @@
         
         <div class="resource-list" id="student-quiz-list"></div>
 
-        <button class="btn-secondary" style="margin-top:auto;" onclick="window.eduApp.setRole('student')">⬅ Back</button>
+        <button class="btn-secondary" id="btn-student-quizzes-back" style="margin-top:auto;" onclick="window.eduApp.goBack()">Back</button>
       </section>
 
       <!-- ================= SCREEN 7: QUIZ TAKER ================= -->
@@ -261,30 +394,30 @@
         <div id="quiz-question-box"></div>
 
         <div style="display:flex; gap:10px; margin-top:auto;">
-          <button class="btn-secondary" style="flex:1;" onclick="window.eduApp.renderStudentQuizzes()">Cancel</button>
-          <button class="btn-primary" id="btn-quiz-next" style="flex:2;">Next Question ➡</button>
+          <button class="btn-secondary" id="btn-quiz-cancel" style="flex:1;" onclick="window.eduApp.goBack()">Cancel</button>
+          <button class="btn-primary" id="btn-quiz-next" style="flex:2;">Next Question</button>
         </div>
       </section>
 
       <!-- ================= SCREEN 8: QUIZ COMPLETE ================= -->
       <section class="screen" id="screen-quiz-complete">
         <div class="welcome-hero">
-          <div style="font-size:3.5rem; margin-bottom:8px;">🏆</div>
-          <h2 class="hero-title" style="color:var(--accent-green);" data-i18n="quizComplete">Quiz Complete!</h2>
+          <div style="font-size:1.8rem; font-weight:800; color:var(--accent-green); margin-bottom:4px;">Completed</div>
+          <h2 class="hero-title" style="color:var(--text-main);" data-i18n="quizComplete">Quiz Complete!</h2>
           <div style="font-size:1.8rem; font-weight:800; color:var(--primary); margin: 8px 0;" id="quiz-result-score">4 / 5</div>
           <div style="font-size:1rem; font-weight:700; color:var(--text-secondary);" id="quiz-result-percentage">80%</div>
         </div>
 
         <div class="sync-diff-box" style="text-align:center;">
-          <div style="font-weight:700; color:#34d399; font-size:0.95rem; margin-bottom:4px;" data-i18n="savedOffline">✓ Saved Offline</div>
+          <div style="font-weight:700; color:#34d399; font-size:0.95rem; margin-bottom:4px;" data-i18n="savedOffline">Saved Offline</div>
           <p style="font-size:0.82rem; color:var(--text-secondary);" data-i18n="savedOfflineMsg">
             Your result is saved safely. It will automatically sync when you connect to your teacher.
           </p>
         </div>
 
         <div style="display:flex; flex-direction:column; gap:8px; margin-top:auto;">
-          <button class="btn-primary" onclick="window.eduApp.renderStudentScorecard()">📊 View Scorecard</button>
-          <button class="btn-secondary" onclick="window.eduApp.renderStudentQuizzes()">⬅ Back to Quizzes</button>
+          <button class="btn-primary" onclick="window.eduApp.renderStudentScorecard()">View Scorecard</button>
+          <button class="btn-secondary" id="btn-quiz-complete-back" onclick="window.eduApp.renderStudentQuizzes()">Back to Quizzes</button>
         </div>
       </section>
 
@@ -297,8 +430,8 @@
         <div class="resource-list" id="student-scorecard-list"></div>
 
         <div style="display:flex; gap:8px; margin-top:auto;">
-          <button class="btn-secondary" style="flex:1;" onclick="window.eduApp.setRole('student')">⬅ Back</button>
-          <button class="btn-primary" style="flex:2;" onclick="window.eduApp.openSyncCenter()">🔄 Sync With Teacher</button>
+          <button class="btn-secondary" id="btn-student-progress-back" style="flex:1;" onclick="window.eduApp.goBack()">Back</button>
+          <button class="btn-primary" style="flex:2;" onclick="window.eduApp.openSyncCenter()">Sync With Teacher</button>
         </div>
       </section>
 
@@ -326,36 +459,38 @@
         <div style="font-size:0.85rem; font-weight:700; margin-top:6px;" data-i18n="quizSubmissions">Synced Student Submissions</div>
         <div class="peer-list" id="teacher-submissions-list"></div>
 
-        <button class="btn-secondary" style="margin-top:auto;" onclick="window.eduApp.setRole('teacher')">⬅ Back</button>
+        <button class="btn-secondary" id="btn-teacher-analytics-back" style="margin-top:auto;" onclick="window.eduApp.goBack()">Back</button>
       </section>
 
       <!-- ================= SCREEN 11: NEARBY DEVICE RADAR ================= -->
       <section class="screen" id="screen-nearby-radar">
         <div class="section-header">
           <h2 class="section-title" data-i18n="nearbyDevices">Nearby Devices Radar</h2>
-          <button class="btn-secondary btn-sm" id="btn-rescan-radar" onclick="window.eduApp.searchNearbyDevices()">🔄 Rescan</button>
+          <button class="btn-secondary btn-sm" id="btn-rescan-radar" onclick="window.eduApp.searchNearbyDevices()">Rescan</button>
         </div>
 
-        <div style="background: rgba(0, 210, 255, 0.08); border: 1px solid rgba(0, 210, 255, 0.2); border-radius: 8px; padding: 10px; font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px; text-align: center; line-height: 1.4;">
-          Ensure the Teacher device has EduSync open. Use the <b>Search bar</b> below to search devices by name, code or MAC, then tap <b>Connect</b>.
+        <div style="background: #111111; border: 1px solid #242424; border-radius: 8px; padding: 10px; font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px; text-align: center; line-height: 1.4;">
+          Ensure the Teacher device has EduSync open. Use the Search bar below to search devices by name, code or MAC, then tap Connect.
         </div>
 
         <!-- Nearby Devices Search Bar -->
         <div class="radar-search-container">
           <div class="radar-search-input-wrapper">
-            <input type="text" id="radar-search-input" class="radar-search-input" placeholder="🔍 Search device name, teacher, code..." 
+            <input type="text" id="radar-search-input" class="radar-search-input" placeholder="Search device name, teacher, code..." 
                    oninput="window.eduApp.filterNearbyPeers()" onkeydown="if(event.key==='Enter') window.eduApp.filterNearbyPeers()">
-            <button id="btn-clear-radar-search" class="radar-clear-btn" onclick="window.eduApp.clearRadarSearch()" style="display: none;" title="Clear search">✕</button>
+            <button id="btn-clear-radar-search" class="radar-clear-btn" onclick="window.eduApp.clearRadarSearch()" style="display: none;" title="Clear search">&times;</button>
           </div>
           <button class="btn-primary" id="btn-do-radar-search" style="width: auto; padding: 10px 16px; font-size: 0.88rem; white-space: nowrap;" onclick="window.eduApp.filterNearbyPeers()">
-            🔍 Search
+            Search
           </button>
         </div>
 
         <div class="radar-container" id="radar-animation-box">
           <div class="radar-sweep">
             <div class="radar-beam"></div>
-            <div class="radar-center-icon">📡</div>
+            <div class="radar-center-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+            </div>
           </div>
           <div id="radar-status-text" style="margin-top:14px; font-size:0.82rem; color:var(--primary);" data-i18n="searchingNearby">
             Scanning for nearby EduSync devices...
@@ -367,14 +502,14 @@
 
         <div class="peer-list" id="nearby-peers-list"></div>
 
-        <button class="btn-secondary" id="btn-radar-back" style="margin-top:auto;" onclick="window.eduApp.goBackFromRadar()">⬅ Back</button>
+        <button class="btn-secondary" id="btn-radar-back" style="margin-top:auto;" onclick="window.eduApp.goBackFromRadar()">Back</button>
       </section>
 
       <!-- ================= SCREEN 12: SYNC CENTER ================= -->
       <section class="screen" id="screen-sync-center">
         <div class="section-header">
           <div style="display:flex; align-items:center; gap:8px;">
-            <button class="btn-secondary btn-sm" id="btn-sync-header-back" onclick="window.eduApp.goBackFromSyncCenter()">⬅ Back</button>
+            <button class="btn-secondary btn-sm" id="btn-sync-header-back" onclick="window.eduApp.goBackFromSyncCenter()">Back</button>
             <h2 class="section-title" data-i18n="syncCenter" style="margin:0;">Smart Sync Center</h2>
           </div>
           <span class="status-pill">P2P Ready</span>
@@ -396,13 +531,13 @@
             <span>Local P2P Direct</span>
           </div>
 
-          <div id="transfer-interrupt-alert" style="display:none; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); border-radius:8px; padding:10px; margin-top:8px; text-align:center;">
+          <div id="transfer-interrupt-alert" style="display:none; background:#1a0f0f; border:1px solid #7f1d1d; border-radius:8px; padding:10px; margin-top:8px; text-align:center;">
             <div style="font-weight:700; color:#ef4444; font-size:0.85rem; margin-bottom:4px;" data-i18n="transferInterrupted">
-              ⚠️ Connection interrupted. Transfer paused.
+              Connection interrupted. Transfer paused.
             </div>
             <p style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:8px;">Move closer to the peer device and resume from saved chunk.</p>
             <button class="btn-primary btn-sm" id="btn-resume-transfer" style="width:auto; margin:0 auto;" data-i18n="resumeTransfer">
-              🔄 Resume Transfer
+              Resume Transfer
             </button>
           </div>
         </div>
@@ -417,7 +552,7 @@
       <div class="modal-content">
         <div class="section-header">
           <h3 style="font-size:1.1rem; font-weight:700;" data-i18n="addNewLesson">Add New Lesson / Resource</h3>
-          <button class="btn-icon" id="btn-close-add-modal">&times;</button>
+          <button class="btn-icon" id="btn-close-add-modal" type="button">&times;</button>
         </div>
 
         <form id="form-add-resource" style="display:flex; flex-direction:column; gap:12px;">
@@ -428,12 +563,21 @@
 
           <div class="form-group">
             <label data-i18n="subject">Subject</label>
-            <select class="form-control" id="res-input-subject">
-              <option value="science">Science</option>
-              <option value="mathematics">Mathematics</option>
-              <option value="english">English</option>
-              <option value="socialScience">Social Science</option>
-            </select>
+            <input type="text" class="form-control" id="res-input-subject" list="subject-suggestions" placeholder="e.g. Physics, Mathematics, Science, History..." required>
+            <datalist id="subject-suggestions">
+              <option value="Mathematics">
+              <option value="Science">
+              <option value="Physics">
+              <option value="Chemistry">
+              <option value="Biology">
+              <option value="English">
+              <option value="Social Science">
+              <option value="Computer Science">
+              <option value="Hindi">
+              <option value="Economics">
+              <option value="Geography">
+              <option value="History">
+            </datalist>
           </div>
 
           <div class="form-group">
@@ -443,12 +587,30 @@
 
           <div class="form-group">
             <label data-i18n="type">Resource Type</label>
-            <select class="form-control" id="res-input-type">
+            <select class="form-control" id="res-input-type" onchange="window.eduApp.onResourceTypeChanged()">
               <option value="notes">Digital Notes (Text/Summary)</option>
               <option value="pdf">PDF Document</option>
               <option value="audio">Audio Lesson</option>
               <option value="video">Video Simulation</option>
             </select>
+          </div>
+
+          <!-- Dedicated PDF / File Drop Zone -->
+          <div class="form-group" id="file-drop-zone-container">
+            <label>Upload PDF or Supporting File</label>
+            <div class="file-drop-zone" id="file-drop-zone" onclick="document.getElementById('res-input-file').click()">
+              <div class="drop-zone-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              </div>
+              <div class="drop-zone-text" id="drop-zone-text">Click to choose file or drag & drop here</div>
+              <div class="drop-zone-subtext">PDF resources are transferred to connected students over Bluetooth</div>
+              <input type="file" id="res-input-file" style="display:none;" accept=".pdf,.doc,.docx,.txt,.epub,.mp3,.mp4">
+            </div>
+            <div id="file-selected-badge" style="display:none;" class="file-selected-badge">
+              <span id="file-selected-name">document.pdf</span>
+              <span id="file-selected-size" style="color:var(--text-secondary); font-size:0.75rem;"></span>
+              <button type="button" class="btn-clear-file" id="btn-clear-file" onclick="window.eduApp.clearSelectedFile(event)">&times;</button>
+            </div>
           </div>
 
           <div class="form-group">
@@ -458,13 +620,13 @@
 
           <div class="form-group">
             <label>Key Bullet Points (1 per line)</label>
-            <textarea class="form-control" id="res-input-points" rows="3" placeholder="Point 1: Contact vs Non-contact forces&#10;Point 2: Pressure = Force / Area"></textarea>
+            <textarea class="form-control" id="res-input-points" rows="3" placeholder="Point 1: Concept definition&#10;Point 2: Core formula and principles"></textarea>
           </div>
 
           <!-- Bluetooth Peer Status & Instant Share Toggle -->
-          <div id="add-res-bt-status" style="background: rgba(0, 210, 255, 0.08); border: 1px solid rgba(0, 210, 255, 0.25); border-radius: 8px; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: space-between;">
+          <div id="add-res-bt-status" style="background: #111111; border: 1px solid #282828; border-radius: 8px; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: space-between;">
             <div>
-              <span id="add-res-bt-indicator">📡 Bluetooth: <b>Checking...</b></span>
+              <span id="add-res-bt-indicator">Bluetooth: <b>Checking...</b></span>
             </div>
             <label style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; cursor: pointer; color: var(--text-main);">
               <input type="checkbox" id="res-input-share-immediately" checked>
@@ -474,7 +636,7 @@
 
           <div style="display:flex; gap:8px; margin-top:8px;">
             <button type="button" class="btn-secondary" style="flex:1;" id="btn-cancel-add" onclick="document.getElementById('modal-add-resource').classList.remove('active')">Cancel</button>
-            <button type="submit" class="btn-primary" id="btn-save-and-share" style="flex:2;">💾 Save & Share</button>
+            <button type="submit" class="btn-primary" id="btn-save-and-share" style="flex:2;">Save & Share</button>
           </div>
         </form>
       </div>
@@ -485,13 +647,13 @@
       <div class="modal-content">
         <div class="section-header">
           <h3 id="viewer-title" style="font-size:1rem; font-weight:700; color:var(--primary);">Lesson Viewer</h3>
-          <button class="btn-icon" id="btn-close-viewer">&times;</button>
+          <button class="btn-icon" id="btn-close-viewer" type="button">&times;</button>
         </div>
 
         <div class="lesson-viewer-body" id="viewer-content-body"></div>
 
-        <button class="btn-primary" onclick="document.getElementById('modal-lesson-viewer').classList.remove('active')">
-          ✓ Done Reading
+        <button class="btn-primary" type="button" onclick="document.getElementById('modal-lesson-viewer').classList.remove('active')">
+          Done Reading
         </button>
       </div>
     </div>
@@ -501,11 +663,10 @@
       <div class="modal-content">
         <div class="section-header">
           <h3 style="font-size:1.1rem; font-weight:700;" data-i18n="teacherVerification">Device Verification</h3>
-          <button class="btn-icon" id="btn-close-pairing-modal">&times;</button>
+          <button class="btn-icon" id="btn-close-pairing-modal" type="button">&times;</button>
         </div>
 
         <div style="text-align:center; padding: 12px 0;">
-          <div style="font-size: 2.2rem; margin-bottom: 6px;">📱 ⇄ 💻</div>
           <h4 id="pairing-peer-name" style="font-size:1.05rem; font-weight:700; color:var(--text-main);">Rahul's Android Phone</h4>
           <p id="pairing-peer-meta" style="font-size:0.8rem; color:var(--text-secondary);">Student &bull; Class 8 &bull; Govt High School</p>
         </div>
@@ -523,9 +684,44 @@
         <div style="display:flex; gap:8px; margin-top:8px;">
           <button type="button" class="btn-secondary" style="flex:1;" id="btn-cancel-pairing">Cancel</button>
           <button type="button" class="btn-primary" style="flex:2;" id="btn-confirm-pairing" data-i18n="verifyAndConnect">
-            ⚡ Verify & Pair
+            Verify & Pair
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- ================= MODAL: HELP / ABOUT ================= -->
+    <div class="modal-overlay" id="modal-about">
+      <div class="modal-content" style="max-width: 380px; text-align: center;">
+        <div class="section-header" style="justify-content: flex-end; border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
+          <button class="btn-icon" id="btn-close-about" type="button" style="padding: 4px 8px;">&times;</button>
+        </div>
+
+        <h3 style="font-size: 1.3rem; font-weight: 800; color: var(--primary);" data-i18n="aboutTitle">About EduSync</h3>
+        <p style="font-size: 0.85rem; color: var(--primary); font-weight: 600; margin-bottom: 12px;" data-i18n="appTagline">Learn Offline. Sync Anywhere.</p>
+
+        <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px; text-align: left;" data-i18n="aboutDesc">
+          EduSync is an offline-first educational platform designed for rural schools. It enables teachers and students to share lessons, complete quizzes, and sync student scores peer-to-peer using Bluetooth without needing any internet connection.
+        </p>
+
+        <div class="sync-diff-box" style="text-align: left; font-size: 0.78rem; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span style="color: var(--text-secondary);" data-i18n="versionLabel">Version</span>
+            <span style="font-weight: 700; color: var(--text-main);">v2.0 (Multi-Peer)</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span style="color: var(--text-secondary);">Transport</span>
+            <span style="font-weight: 700; color: #34d399;">Bluetooth Direct P2P</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-secondary);" data-i18n="appMode">Mode</span>
+            <span style="font-weight: 700; color: var(--primary);" data-i18n="offlineMeshReady">100% Offline P2P Mesh</span>
+          </div>
+        </div>
+
+        <button class="btn-primary" id="btn-done-about" type="button" style="width: 100%;" onclick="document.getElementById('modal-about').classList.remove('active')" data-i18n="close">
+          Close
+        </button>
       </div>
     </div>
 
@@ -533,10 +729,10 @@
 
   <!-- Scripts -->
   <script src="capacitor.js"></script>
-  <script src="js/i18n.js?v=2.9"></script>
-  <script src="js/db.js?v=2.9"></script>
-  <script src="js/transport.js?v=2.9"></script>
-  <script src="js/syncEngine.js?v=2.9"></script>
-  <script src="js/app.js?v=2.9"></script>
+  <script src="js/i18n.js?v=3.0"></script>
+  <script src="js/db.js?v=3.0"></script>
+  <script src="js/transport.js?v=3.0"></script>
+  <script src="js/syncEngine.js?v=3.0"></script>
+  <script src="js/app.js?v=3.0"></script>
 </body>
 </html>

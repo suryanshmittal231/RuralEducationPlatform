@@ -20,6 +20,7 @@ import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.BroadcastReceiver;
@@ -46,7 +47,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
@@ -109,6 +114,9 @@ public class BluetoothP2PPlugin extends Plugin {
     private final Map<String, Thread> clientReaderThreads = new ConcurrentHashMap<>();
     private final Map<String, SocketSession> clientSessions = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, BluetoothDevice> connectedGattDevices = new ConcurrentHashMap<>();
+    private final Object gattNotificationLock = new Object();
+    private final Queue<GattNotificationTask> gattNotificationQueue = new ArrayDeque<>();
+    private boolean gattNotificationInProgress = false;
 
     private boolean isAdvertising = false;
     private boolean isScanning = false;
@@ -129,6 +137,21 @@ public class BluetoothP2PPlugin extends Plugin {
         SocketSession(BluetoothSocket socket, DataOutputStream writer) {
             this.socket = socket;
             this.writer = writer;
+        }
+
+    }
+
+    private static class GattNotificationTask {
+        final byte[] payload;
+        final List<BluetoothDevice> peers;
+        final PluginCall call;
+        int nextPeerIndex = 0;
+        int sentCount = 0;
+
+        GattNotificationTask(byte[] payload, List<BluetoothDevice> peers, PluginCall call) {
+            this.payload = payload;
+            this.peers = peers;
+            this.call = call;
         }
     }
 
@@ -700,7 +723,116 @@ public class BluetoothP2PPlugin extends Plugin {
                 Log.w(TAG, "GATT write processing notice: " + e.getMessage());
             }
         }
+
+        @Override
+        public void onDescriptorWriteRequest(BluetoothDevice device, int requestId, BluetoothGattDescriptor descriptor, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
+            try {
+                if (CLIENT_CONFIG_DESCRIPTOR.equals(descriptor.getUuid()) && value != null) {
+                    descriptor.setValue(value);
+                    Log.d(TAG, "BLE data notifications configured for " + safeGetAddress(device));
+                }
+                if (responseNeeded && gattServer != null) {
+                    gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
+                }
+            } catch (Throwable e) {
+                Log.w(TAG, "GATT descriptor write response notice: " + e.getMessage());
+            }
+        }
+
+        @Override
+        public void onNotificationSent(BluetoothDevice device, int status) {
+            completeNextGattNotification(status == BluetoothGatt.GATT_SUCCESS);
+        }
     };
+
+    private void enqueueGattNotification(byte[] bytes, PluginCall call) {
+        List<BluetoothDevice> peers = new ArrayList<>(connectedGattDevices.values());
+        synchronized (gattNotificationLock) {
+            gattNotificationQueue.add(new GattNotificationTask(bytes, peers, call));
+        }
+        drainGattNotificationQueue();
+    }
+
+    private void drainGattNotificationQueue() {
+        synchronized (gattNotificationLock) {
+            if (gattNotificationInProgress || gattNotificationQueue.isEmpty()) {
+                return;
+            }
+
+            GattNotificationTask task = gattNotificationQueue.peek();
+            if (task.peers.isEmpty() || gattServer == null) {
+                gattNotificationQueue.remove();
+                task.call.reject("No subscribed BLE students are connected.");
+                drainGattNotificationQueue();
+                return;
+            }
+
+            BluetoothGattService service = gattServer.getService(SERVICE_UUID);
+            BluetoothGattCharacteristic dataChar = service == null
+                    ? null
+                    : service.getCharacteristic(CHAR_DATA_UUID);
+            if (dataChar == null) {
+                gattNotificationQueue.remove();
+                task.call.reject("EduSync BLE data characteristic is unavailable.");
+                drainGattNotificationQueue();
+                return;
+            }
+
+            while (task.nextPeerIndex < task.peers.size()) {
+                BluetoothDevice peer = task.peers.get(task.nextPeerIndex);
+                task.nextPeerIndex++;
+                if (!connectedGattDevices.containsKey(safeGetAddress(peer))) {
+                    continue;
+                }
+
+                try {
+                    dataChar.setValue(task.payload);
+                    gattNotificationInProgress = true;
+                    boolean accepted;
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        accepted = gattServer.notifyCharacteristicChanged(peer, dataChar, false, task.payload)
+                                == BluetoothGatt.GATT_SUCCESS;
+                    } else {
+                        accepted = gattServer.notifyCharacteristicChanged(peer, dataChar, false);
+                    }
+                    if (accepted) {
+                        return;
+                    }
+                    gattNotificationInProgress = false;
+                } catch (Throwable e) {
+                    Log.w(TAG, "BLE notification enqueue notice: " + e.getMessage());
+                    gattNotificationInProgress = false;
+                }
+            }
+
+            gattNotificationQueue.remove();
+            if (task.sentCount > 0) {
+                JSObject ret = new JSObject();
+                ret.put("sent", true);
+                ret.put("transport", "BLE_GATT_SERVER");
+                ret.put("peerCount", task.sentCount);
+                task.call.resolve(ret);
+            } else {
+                task.call.reject("BLE notification was rejected by all connected peers.");
+            }
+            drainGattNotificationQueue();
+        }
+    }
+
+    private void completeNextGattNotification(boolean success) {
+        synchronized (gattNotificationLock) {
+            if (!gattNotificationInProgress || gattNotificationQueue.isEmpty()) {
+                return;
+            }
+
+            GattNotificationTask task = gattNotificationQueue.peek();
+            gattNotificationInProgress = false;
+            if (success) {
+                task.sentCount++;
+            }
+            drainGattNotificationQueue();
+        }
+    }
 
     @PluginMethod
     public void stopAdvertising(PluginCall call) {
@@ -763,39 +895,20 @@ public class BluetoothP2PPlugin extends Plugin {
 
         discoveredPeers.clear();
 
-        // 1. Emit already paired devices first for instant connection
-        try {
-            Set<BluetoothDevice> paired = bluetoothAdapter.getBondedDevices();
-            if (paired != null) {
-                for (BluetoothDevice dev : paired) {
-                    addDiscoveredDevice(dev, -45, "Paired");
-                }
-            }
-        } catch (Throwable ignored) {}
-
-        // 2. Start Classic Bluetooth Discovery
-        try {
-            registerDiscoveryReceiver();
-            if (bluetoothAdapter.isDiscovering()) {
-                bluetoothAdapter.cancelDiscovery();
-            }
-            bluetoothAdapter.startDiscovery();
-            Log.i(TAG, "Classic Bluetooth Discovery started.");
-        } catch (Throwable e) {
-            Log.w(TAG, "Exception starting Classic Discovery: " + e.getMessage());
-        }
-
-        // 3. Start Low-Latency BLE Scanner
+        // Scan only for the EduSync service advertised by the app.
         try {
             scanner = bluetoothAdapter.getBluetoothLeScanner();
             if (scanner != null) {
                 ScanSettings settings = new ScanSettings.Builder()
                         .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                         .build();
+                ScanFilter filter = new ScanFilter.Builder()
+                        .setServiceUuid(new ParcelUuid(SERVICE_UUID))
+                        .build();
 
-                scanner.startScan(null, settings, scanCallback);
+                scanner.startScan(java.util.Collections.singletonList(filter), settings, scanCallback);
                 isScanning = true;
-                Log.i(TAG, "BLE Scanner started in low-latency mode.");
+                Log.i(TAG, "BLE Scanner started for EduSync devices only.");
             }
         } catch (Throwable e) {
             Log.w(TAG, "BLE scanning notice: " + e.getMessage());
@@ -920,6 +1033,12 @@ public class BluetoothP2PPlugin extends Plugin {
         }
     }
 
+    // Stop scanning without stopping the teacher's advertising or active peers.
+    @PluginMethod
+    public void stopDiscovery(PluginCall call) {
+        stopScanning(call);
+    }
+
     @PluginMethod
     public void connectToPeer(PluginCall call) {
         String address = call.getString("address");
@@ -967,7 +1086,9 @@ public class BluetoothP2PPlugin extends Plugin {
             try {
                 boolean connected = false;
                 Throwable lastConnectionError = null;
-                for (int attempt = 1; attempt <= 3 && !connected; attempt++) {
+                // Discovery has already been stopped above; use one immediate
+                // RFCOMM attempt and fall back to GATT without retry delays.
+                for (int attempt = 1; attempt <= 1 && !connected; attempt++) {
                     BluetoothSocket socket = null;
                     try {
                         Log.i(TAG, "Attempting RFCOMM Socket connection to " + address + " (attempt " + attempt + ")");
@@ -1025,12 +1146,6 @@ public class BluetoothP2PPlugin extends Plugin {
                         lastConnectionError = e;
                         if (socket != null) {
                             try { socket.close(); } catch (Throwable ignored) {}
-                        }
-                        if (attempt < 3) {
-                            try { Thread.sleep(400L * attempt); } catch (InterruptedException interrupted) {
-                                Thread.currentThread().interrupt();
-                                break;
-                            }
                         }
                     }
                 }
@@ -1101,23 +1216,6 @@ public class BluetoothP2PPlugin extends Plugin {
                                             pairChar.setValue(pairingCode.getBytes(StandardCharsets.UTF_8));
                                             gatt.writeCharacteristic(pairChar);
                                         }
-
-                                        BluetoothGattCharacteristic dataChar = service.getCharacteristic(CHAR_DATA_UUID);
-                                        if (dataChar != null) {
-                                            gatt.setCharacteristicNotification(dataChar, true);
-                                            BluetoothGattDescriptor desc = dataChar.getDescriptor(CLIENT_CONFIG_DESCRIPTOR);
-                                            if (desc != null) {
-                                                desc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-                                                gatt.writeDescriptor(desc);
-                                            }
-                                        }
-
-                                        JSObject obj = new JSObject();
-                                        obj.put("address", addr);
-                                        obj.put("name", safeGetName(device, "Teacher (BLE)"));
-                                        obj.put("role", "teacher");
-                                        obj.put("success", true);
-                                        safeNotifyListeners("peerConnected", obj);
                                     }
                                 }
                             } catch (Throwable e) {
@@ -1125,6 +1223,43 @@ public class BluetoothP2PPlugin extends Plugin {
                             }
                         }
 
+                                @Override
+                        public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+                                   try {
+                                       if (CHAR_PAIR_UUID.equals(characteristic.getUuid()) && status == BluetoothGatt.GATT_SUCCESS) {
+                                           BluetoothGattService service = gatt.getService(SERVICE_UUID);
+                                           BluetoothGattCharacteristic dataChar = service == null ? null : service.getCharacteristic(CHAR_DATA_UUID);
+                                           if (dataChar != null) {
+                                               gatt.setCharacteristicNotification(dataChar, true);
+                                               BluetoothGattDescriptor desc = dataChar.getDescriptor(CLIENT_CONFIG_DESCRIPTOR);
+                                               if (desc != null) {
+                                                   desc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                                                   gatt.writeDescriptor(desc);
+                                                   return;
+                                               }
+                                           }
+                                           emitGattPeerConnected(addr, device);
+                                       }
+                                   } catch (Throwable e) {
+                                       Log.w(TAG, "GATT pairing write notice: " + e.getMessage());
+                                   }
+                        }
+
+                        @Override
+                        public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
+                                   if (CLIENT_CONFIG_DESCRIPTOR.equals(descriptor.getUuid())) {
+                                       emitGattPeerConnected(addr, device);
+                                   }
+                        }
+
+                        private void emitGattPeerConnected(String address, BluetoothDevice peerDevice) {
+                                   JSObject obj = new JSObject();
+                                   obj.put("address", address);
+                                   obj.put("name", safeGetName(peerDevice, "Teacher (BLE)"));
+                                   obj.put("role", "teacher");
+                                   obj.put("success", true);
+                                   safeNotifyListeners("peerConnected", obj);
+                        }
                         @Override
                         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
                             try {
@@ -1226,7 +1361,10 @@ public class BluetoothP2PPlugin extends Plugin {
                     BluetoothGattCharacteristic dataChar = service.getCharacteristic(CHAR_DATA_UUID);
                     if (dataChar != null) {
                         dataChar.setValue(bytes);
-                        connectedGattClient.writeCharacteristic(dataChar);
+                        if (!connectedGattClient.writeCharacteristic(dataChar)) {
+                            call.reject("BLE characteristic write was rejected.");
+                            return;
+                        }
                         JSObject ret = new JSObject();
                         ret.put("sent", true);
                         ret.put("transport", "BLE_GATT");
@@ -1238,31 +1376,8 @@ public class BluetoothP2PPlugin extends Plugin {
 
             // Case 3: Broadcast through the BLE GATT server to every connected student.
             if (gattServer != null && !connectedGattDevices.isEmpty()) {
-                BluetoothGattService service = gattServer.getService(SERVICE_UUID);
-                if (service != null) {
-                    BluetoothGattCharacteristic dataChar = service.getCharacteristic(CHAR_DATA_UUID);
-                    if (dataChar != null) {
-                        int sentCount = 0;
-                        for (Map.Entry<String, BluetoothDevice> entry : connectedGattDevices.entrySet()) {
-                            try {
-                                dataChar.setValue(bytes);
-                                if (gattServer.notifyCharacteristicChanged(entry.getValue(), dataChar, false)) {
-                                    sentCount++;
-                                }
-                            } catch (Throwable e) {
-                                Log.w(TAG, "BLE notification failed for " + entry.getKey() + ": " + e.getMessage());
-                            }
-                        }
-                        if (sentCount > 0) {
-                            JSObject ret = new JSObject();
-                            ret.put("sent", true);
-                            ret.put("transport", "BLE_GATT_SERVER");
-                            ret.put("peerCount", sentCount);
-                            call.resolve(ret);
-                            return;
-                        }
-                    }
-                }
+                enqueueGattNotification(bytes, call);
+                return;
             }
 
             call.reject("No active Bluetooth connection to send data.");
