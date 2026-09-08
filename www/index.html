@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>EduSync — Offline Rural Education Platform | SIH Project</title>
+  <meta name="description" content="EduSync allows teachers and students in rural environments to learn offline and sync educational resources and quiz scores peer-to-peer without internet.">
+  <meta name="theme-color" content="#0a0f1d">
+  
+  <!-- PWA Manifest & App Icons -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
+  <link rel="apple-touch-icon" href="assets/icon.svg">
+  
+  <!-- Fonts & Styling -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Main App Shell / Device Frame -->
+  <div class="app-container" id="app-root">
+    
+    <!-- Top Header & Status Bar -->
+    <header class="app-header">
+      <div class="brand-badge btn-back-home" title="Go to Role Selector">
+        <img src="assets/icon.svg" alt="EduSync Logo" class="brand-logo">
+        <span class="brand-title">EduSync</span>
+      </div>
+
+      <div class="header-controls">
+        <button class="btn-icon" id="btn-lang-toggle" title="Toggle Language">
+          🌐 <span data-i18n="switchLanguage">हिंदी</span>
+        </button>
+        <div class="status-pill">
+          <span class="status-indicator"></span>
+          <span data-i18n="offlineModeBadge">100% Offline</span>
+        </div>
+    </header>
+
+    <!-- Transport Mode Banner (Rule 1 & 3 Compliance) -->
+    <div id="transport-banner" class="transport-banner">
+      <span id="transport-badge" class="transport-badge badge-demo">
+        ⚡ Initializing Transport...
+      </span>
+    </div>
+
+    <!-- Main Content Flow -->
+    <main class="app-content">
+
+      <!-- ================= SCREEN 1: ROLE SELECTION ================= -->
+      <section class="screen active" id="screen-role-select">
+        <div class="welcome-hero">
+          <img src="assets/icon.svg" alt="EduSync Logo" class="hero-icon">
+          <h1 class="hero-title" data-i18n="appName">EduSync</h1>
+          <p class="hero-tagline" data-i18n="appTagline">Learn Offline. Sync Anywhere.</p>
+        </div>
+
+        <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; text-align: center;" data-i18n="selectRole">
+          Select Your Role to Begin
+        </div>
+
+        <div class="role-cards-container">
+          <!-- Teacher Card -->
+          <div class="role-card teacher-card" id="btn-select-teacher" role="button" tabindex="0" onclick="window.eduApp && window.eduApp.setRole('teacher')">
+            <div class="role-icon-box">👩‍🏫</div>
+            <div class="role-info">
+              <h3 data-i18n="teacher">Teacher</h3>
+              <p data-i18n="teacherDesc">Organize subjects, share lessons & monitor student progress offline.</p>
+            </div>
+          </div>
+
+          <!-- Student Card -->
+          <div class="role-card student-card" id="btn-select-student" role="button" tabindex="0" onclick="window.eduApp && window.eduApp.setRole('student')">
+            <div class="role-icon-box">👨‍🎓</div>
+            <div class="role-info">
+              <h3 data-i18n="student">Student</h3>
+              <p data-i18n="studentDesc">Access offline classes, take quizzes & sync your work with nearby teachers.</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: auto; text-align: center; font-size: 0.75rem; color: var(--text-muted); padding: 8px 0;">
+          Smart India Hackathon &bull; Offline P2P Mesh Architecture
+        </div>
+      </section>
+
+      <!-- ================= SCREEN 2: TEACHER DASHBOARD ================= -->
+      <section class="screen" id="screen-teacher-dashboard">
+        <div class="user-banner">
+          <div class="user-welcome-text">
+            <h2 data-i18n="welcomeTeacher">Welcome, Teacher</h2>
+            <div style="font-size: 0.78rem; color: var(--text-secondary);">Govt High School &bull; Offline Host</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 0.8rem; color: var(--text-secondary);" data-i18n="class">Class:</span>
+            <select class="class-selector-pill class-select">
+              <option value="6">Class 6</option>
+              <option value="7">Class 7</option>
+              <option value="8" selected>Class 8</option>
+              <option value="9">Class 9</option>
+              <option value="10">Class 10</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="action-grid">
+          <div class="action-card-btn" id="nav-teacher-resources">
+            <div class="action-icon">📚</div>
+            <span data-i18n="myResources">My Resources</span>
+          </div>
+          <div class="action-card-btn" id="nav-teacher-nearby">
+            <div class="action-icon">📱</div>
+            <span data-i18n="nearbyStudents">Nearby Students</span>
+          </div>
+          <div class="action-card-btn" id="nav-teacher-sync">
+            <div class="action-icon">🔄</div>
+            <span data-i18n="syncCenter">Sync Center</span>
+          </div>
+          <div class="action-card-btn" id="nav-teacher-progress">
+            <div class="action-icon">📊</div>
+            <span data-i18n="studentProgress">Student Progress</span>
+          </div>
+        </div>
+
+        <div class="sync-diff-box" style="margin-top:10px; background:rgba(0, 210, 255, 0.08); border-color:rgba(0, 210, 255, 0.3); text-align:center;">
+          <div style="font-size:0.75rem; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">
+            Teacher Bluetooth Pairing Code
+          </div>
+          <div id="teacher-pairing-code-display" style="font-family:monospace; font-size:2rem; font-weight:800; color:var(--primary); letter-spacing:4px; margin: 4px 0;">
+            ----
+          </div>
+          <div style="font-size:0.75rem; color:var(--text-secondary);">
+            Tell nearby students to enter this 4-digit code to pair and sync
+          </div>
+        </div>
+
+        <button class="btn-primary" id="btn-open-add-resource" style="margin-top: 8px;">
+          ➕ <span data-i18n="addResource">Add Resource</span>
+        </button>
+      </section>
+
+      <!-- ================= SCREEN 3: TEACHER RESOURCE MANAGEMENT ================= -->
+      <section class="screen" id="screen-teacher-resources">
+        <div class="section-header">
+          <h2 class="section-title" data-i18n="myResources">My Resources</h2>
+          <button class="btn-secondary btn-sm" id="btn-open-add-resource-2">➕ Add</button>
+        </div>
+
+        <!-- Subject Filter Tabs -->
+        <div class="subject-tabs">
+          <button class="subject-tab active" data-subject="all">All Subjects</button>
+          <button class="subject-tab" data-subject="mathematics" data-i18n="mathematics">Mathematics</button>
+          <button class="subject-tab" data-subject="science" data-i18n="science">Science</button>
+          <button class="subject-tab" data-subject="english" data-i18n="english">English</button>
+          <button class="subject-tab" data-subject="socialScience" data-i18n="socialScience">Social Science</button>
+        </div>
+
+        <!-- Resource Cards List -->
+        <div class="resource-list" id="teacher-resource-list"></div>
+
+        <div style="margin-top: auto; display: flex; gap: 8px;">
+          <button class="btn-secondary" style="flex: 1;" onclick="window.eduApp.setRole('teacher')">⬅ Back</button>
+          <button class="btn-primary" style="flex: 2;" onclick="window.eduApp.renderNearbyRadar()">
+            📡 <span data-i18n="shareWithStudents">Share with Nearby Students</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= SCREEN 4: STUDENT DASHBOARD ================= -->
+      <section class="screen" id="screen-student-dashboard">
+        <div class="user-banner">
+          <div class="user-welcome-text">
+            <h2 data-i18n="welcomeStudent">Welcome, Student</h2>
+            <div style="font-size: 0.78rem; color: #34d399;">✓ Device Offline Ready</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 0.8rem; color: var(--text-secondary);" data-i18n="class">Class:</span>
+            <select class="class-selector-pill class-select">
+              <option value="6">Class 6</option>
+              <option value="7">Class 7</option>
+              <option value="8" selected>Class 8</option>
+              <option value="9">Class 9</option>
+              <option value="10">Class 10</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="action-grid">
+          <div class="action-card-btn" id="nav-student-learning">
+            <div class="action-icon">📖</div>
+            <span data-i18n="myLearning">My Learning</span>
+          </div>
+          <div class="action-card-btn" id="nav-student-quizzes">
+            <div class="action-icon">✍️</div>
+            <span data-i18n="myQuizzes">My Quizzes</span>
+          </div>
+          <div class="action-card-btn" id="nav-student-progress">
+            <div class="action-icon">📊</div>
+            <span data-i18n="myProgress">My Progress</span>
+          </div>
+          <div class="action-card-btn" id="nav-student-sync">
+            <div class="action-icon">🔄</div>
+            <span data-i18n="syncWithTeacher">Sync with Teacher</span>
+          </div>
+        </div>
+
+        <!-- Dedicated Prominent Connect Card -->
+        <div class="sync-diff-box" style="margin-top:14px; background: linear-gradient(135deg, rgba(0, 210, 255, 0.15), rgba(59, 130, 246, 0.1)); border: 1px solid rgba(0, 210, 255, 0.4); text-align: center; cursor: pointer; padding: 16px;" onclick="window.eduApp.renderNearbyRadar()">
+          <div style="font-size: 2rem; margin-bottom: 6px;">📡</div>
+          <div style="font-weight: 800; color: var(--primary); font-size: 1.05rem; letter-spacing: 0.3px;">
+            CONNECT TO TEACHER (BLUETOOTH)
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 4px;">
+            Tap to scan for nearby Teacher's phone, pair with the 4-digit code, and sync lessons
+          </div>
+          <button class="btn-primary" style="margin-top: 10px; width: 100%; font-size: 0.9rem;" onclick="event.stopPropagation(); window.eduApp.renderNearbyRadar(true);">
+            🔍 Search Nearby Devices (Radar)
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= SCREEN 5: STUDENT LEARNING LIBRARY ================= -->
+      <section class="screen" id="screen-student-learning">
+        <div class="section-header">
+          <h2 class="section-title" data-i18n="myLearning">My Learning Library</h2>
+          <button class="btn-secondary btn-sm" onclick="window.eduApp.openSyncCenter()">🔄 Sync</button>
+        </div>
+
+        <div class="subject-tabs">
+          <button class="subject-tab active" data-subject="all">All</button>
+          <button class="subject-tab" data-subject="mathematics" data-i18n="mathematics">Mathematics</button>
+          <button class="subject-tab" data-subject="science" data-i18n="science">Science</button>
+          <button class="subject-tab" data-subject="english" data-i18n="english">English</button>
+          <button class="subject-tab" data-subject="socialScience" data-i18n="socialScience">Social Science</button>
+        </div>
+
+        <div class="resource-list" id="student-resource-list"></div>
+
+        <button class="btn-secondary" style="margin-top:auto;" onclick="window.eduApp.setRole('student')">⬅ Back</button>
+      </section>
+
+      <!-- ================= SCREEN 6: STUDENT QUIZZES LIST ================= -->
+      <section class="screen" id="screen-student-quizzes">
+        <div class="section-header">
+          <h2 class="section-title" data-i18n="myQuizzes">Offline Quizzes</h2>
+        </div>
+        <p style="font-size:0.8rem; color:var(--text-secondary);">Practice offline questions anytime. Your scores will automatically sync to your teacher when nearby.</p>
+        
+        <div class="resource-list" id="student-quiz-list"></div>
+
+        <button class="btn-secondary" style="margin-top:auto;" onclick="window.eduApp.setRole('student')">⬅ Back</button>
+      </section>
+
+      <!-- ================= SCREEN 7: QUIZ TAKER ================= -->
+      <section class="screen" id="screen-quiz-taker">
+        <div class="section-header">
+          <h3 id="quiz-taker-title" style="font-size:1rem; font-weight:700; color:var(--primary);">Practice Quiz</h3>
+          <span class="status-pill">Offline</span>
+        </div>
+
+        <div id="quiz-question-box"></div>
+
+        <div style="display:flex; gap:10px; margin-top:auto;">
+          <button class="btn-secondary" style="flex:1;" onclick="window.eduApp.renderStudentQuizzes()">Cancel</button>
+          <button class="btn-primary" id="btn-quiz-next" style="flex:2;">Next Question ➡</button>
+        </div>
+      </section>
+
+      <!-- ================= SCREEN 8: QUIZ COMPLETE ================= -->
+      <section class="screen" id="screen-quiz-complete">
+        <div class="welcome-hero">
+          <div style="font-size:3.5rem; margin-bottom:8px;">🏆</div>
+          <h2 class="hero-title" style="color:var(--accent-green);" data-i18n="quizComplete">Quiz Complete!</h2>
+          <div style="font-size:1.8rem; font-weight:800; color:var(--primary); margin: 8px 0;" id="quiz-result-score">4 / 5</div>
+          <div style="font-size:1rem; font-weight:700; color:var(--text-secondary);" id="quiz-result-percentage">80%</div>
+        </div>
+
+        <div class="sync-diff-box" style="text-align:center;">
+          <div style="font-weight:700; color:#34d399; font-size:0.95rem; margin-bottom:4px;" data-i18n="savedOffline">✓ Saved Offline</div>
+          <p style="font-size:0.82rem; color:var(--text-secondary);" data-i18n="savedOfflineMsg">
+            Your result is saved safely. It will automatically sync when you connect to your teacher.
+          </p>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:auto;">
+          <button class="btn-primary" onclick="window.eduApp.renderStudentScorecard()">📊 View Scorecard</button>
+          <button class="btn-secondary" onclick="window.eduApp.renderStudentQuizzes()">⬅ Back to Quizzes</button>
+        </div>
+      </section>
+
+      <!-- ================= SCREEN 9: STUDENT SCORECARD ================= -->
+      <section class="screen" id="screen-student-progress">
+        <div class="section-header">
+          <h2 class="section-title" data-i18n="myProgress">My Scorecard</h2>
+        </div>
+        
+        <div class="resource-list" id="student-scorecard-list"></div>
+
+        <div style="display:flex; gap:8px; margin-top:auto;">
+          <button class="btn-secondary" style="flex:1;" onclick="window.eduApp.setRole('student')">⬅ Back</button>
+          <button class="btn-primary" style="flex:2;" onclick="window.eduApp.openSyncCenter()">🔄 Sync With Teacher</button>
+        </div>
+      </section>
+
+      <!-- ================= SCREEN 10: TEACHER ANALYTICS ================= -->
+      <section class="screen" id="screen-teacher-analytics">
+        <div class="section-header">
+          <h2 class="section-title" data-i18n="studentProgress">Student Progress</h2>
+        </div>
+
+        <div class="stats-cards-row">
+          <div class="stat-card">
+            <div class="stat-number" id="stat-total-quizzes">0</div>
+            <div class="stat-label" data-i18n="quizzesTaken">Quizzes</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="stat-avg-score">0%</div>
+            <div class="stat-label" data-i18n="classAverage">Class Avg</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="stat-active-students">0</div>
+            <div class="stat-label" data-i18n="activeLearners">Students</div>
+          </div>
+        </div>
+
+        <div style="font-size:0.85rem; font-weight:700; margin-top:6px;" data-i18n="quizSubmissions">Synced Student Submissions</div>
+        <div class="peer-list" id="teacher-submissions-list"></div>
+
+        <button class="btn-secondary" style="margin-top:auto;" onclick="window.eduApp.setRole('teacher')">⬅ Back</button>
+      </section>
+
+      <!-- ================= SCREEN 11: NEARBY DEVICE RADAR ================= -->
+      <section class="screen" id="screen-nearby-radar">
+        <div class="section-header">
+          <h2 class="section-title" data-i18n="nearbyDevices">Nearby Devices Radar</h2>
+          <button class="btn-secondary btn-sm" id="btn-rescan-radar" onclick="window.eduApp.searchNearbyDevices()">🔄 Rescan</button>
+        </div>
+
+        <div style="background: rgba(0, 210, 255, 0.08); border: 1px solid rgba(0, 210, 255, 0.2); border-radius: 8px; padding: 10px; font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px; text-align: center; line-height: 1.4;">
+          Ensure the Teacher device has EduSync open. Use the <b>Search bar</b> below to search devices by name, code or MAC, then tap <b>Connect</b>.
+        </div>
+
+        <!-- Nearby Devices Search Bar -->
+        <div class="radar-search-container">
+          <div class="radar-search-input-wrapper">
+            <input type="text" id="radar-search-input" class="radar-search-input" placeholder="🔍 Search device name, teacher, code..." 
+                   oninput="window.eduApp.filterNearbyPeers()" onkeydown="if(event.key==='Enter') window.eduApp.filterNearbyPeers()">
+            <button id="btn-clear-radar-search" class="radar-clear-btn" onclick="window.eduApp.clearRadarSearch()" style="display: none;" title="Clear search">✕</button>
+          </div>
+          <button class="btn-primary" id="btn-do-radar-search" style="width: auto; padding: 10px 16px; font-size: 0.88rem; white-space: nowrap;" onclick="window.eduApp.filterNearbyPeers()">
+            🔍 Search
+          </button>
+        </div>
+
+        <div class="radar-container" id="radar-animation-box">
+          <div class="radar-sweep">
+            <div class="radar-beam"></div>
+            <div class="radar-center-icon">📡</div>
+          </div>
+          <div id="radar-status-text" style="margin-top:14px; font-size:0.82rem; color:var(--primary);" data-i18n="searchingNearby">
+            Scanning for nearby EduSync devices...
+          </div>
+        </div>
+
+        <!-- Filter Count Banner -->
+        <div id="radar-search-counter" style="display:none; font-size:0.78rem; color:var(--text-secondary); margin-bottom:8px; font-weight:600;"></div>
+
+        <div class="peer-list" id="nearby-peers-list"></div>
+
+        <button class="btn-secondary" id="btn-radar-back" style="margin-top:auto;" onclick="window.eduApp.goBackFromRadar()">⬅ Back</button>
+      </section>
+
+      <!-- ================= SCREEN 12: SYNC CENTER ================= -->
+      <section class="screen" id="screen-sync-center">
+        <div class="section-header">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="btn-secondary btn-sm" id="btn-sync-header-back" onclick="window.eduApp.goBackFromSyncCenter()">⬅ Back</button>
+            <h2 class="section-title" data-i18n="syncCenter" style="margin:0;">Smart Sync Center</h2>
+          </div>
+          <span class="status-pill">P2P Ready</span>
+        </div>
+
+        <div id="sync-diff-content"></div>
+
+        <!-- Transfer Progress Bar Box -->
+        <div class="progress-container" id="sync-progress-box" style="display:none;">
+          <div class="progress-header">
+            <span id="transfer-title-label" style="font-size:0.82rem; color:var(--text-main);">Transferring...</span>
+            <span id="transfer-percent-label" style="color:var(--primary);">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="transfer-progress-fill"></div>
+          </div>
+          <div class="progress-meta">
+            <span id="transfer-meta-label">Chunk 0/10 • 0.0 MB</span>
+            <span>Local P2P Direct</span>
+          </div>
+
+          <div id="transfer-interrupt-alert" style="display:none; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); border-radius:8px; padding:10px; margin-top:8px; text-align:center;">
+            <div style="font-weight:700; color:#ef4444; font-size:0.85rem; margin-bottom:4px;" data-i18n="transferInterrupted">
+              ⚠️ Connection interrupted. Transfer paused.
+            </div>
+            <p style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:8px;">Move closer to the peer device and resume from saved chunk.</p>
+            <button class="btn-primary btn-sm" id="btn-resume-transfer" style="width:auto; margin:0 auto;" data-i18n="resumeTransfer">
+              🔄 Resume Transfer
+            </button>
+          </div>
+        </div>
+
+        <div id="sync-action-controls" style="display:flex; flex-direction:column; gap:8px; margin-top:auto;"></div>
+      </section>
+
+    </main>
+
+    <!-- ================= MODAL: ADD RESOURCE ================= -->
+    <div class="modal-overlay" id="modal-add-resource">
+      <div class="modal-content">
+        <div class="section-header">
+          <h3 style="font-size:1.1rem; font-weight:700;" data-i18n="addNewLesson">Add New Lesson / Resource</h3>
+          <button class="btn-icon" id="btn-close-add-modal">&times;</button>
+        </div>
+
+        <form id="form-add-resource" style="display:flex; flex-direction:column; gap:12px;">
+          <div class="form-group">
+            <label data-i18n="resourceTitle">Lesson / Resource Title</label>
+            <input type="text" class="form-control" id="res-input-title" placeholder="e.g. Force and Pressure Basics" required>
+          </div>
+
+          <div class="form-group">
+            <label data-i18n="subject">Subject</label>
+            <select class="form-control" id="res-input-subject">
+              <option value="science">Science</option>
+              <option value="mathematics">Mathematics</option>
+              <option value="english">English</option>
+              <option value="socialScience">Social Science</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label data-i18n="chapter">Chapter</label>
+            <input type="text" class="form-control" id="res-input-chapter" placeholder="e.g. Chapter 4" required>
+          </div>
+
+          <div class="form-group">
+            <label data-i18n="type">Resource Type</label>
+            <select class="form-control" id="res-input-type">
+              <option value="notes">Digital Notes (Text/Summary)</option>
+              <option value="pdf">PDF Document</option>
+              <option value="audio">Audio Lesson</option>
+              <option value="video">Video Simulation</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Concept Summary</label>
+            <textarea class="form-control" id="res-input-summary" rows="2" placeholder="Brief concept summary for students..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Key Bullet Points (1 per line)</label>
+            <textarea class="form-control" id="res-input-points" rows="3" placeholder="Point 1: Contact vs Non-contact forces&#10;Point 2: Pressure = Force / Area"></textarea>
+          </div>
+
+          <!-- Bluetooth Peer Status & Instant Share Toggle -->
+          <div id="add-res-bt-status" style="background: rgba(0, 210, 255, 0.08); border: 1px solid rgba(0, 210, 255, 0.25); border-radius: 8px; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <span id="add-res-bt-indicator">📡 Bluetooth: <b>Checking...</b></span>
+            </div>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; cursor: pointer; color: var(--text-main);">
+              <input type="checkbox" id="res-input-share-immediately" checked>
+              Auto-Share via BT
+            </label>
+          </div>
+
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button type="button" class="btn-secondary" style="flex:1;" id="btn-cancel-add" onclick="document.getElementById('modal-add-resource').classList.remove('active')">Cancel</button>
+            <button type="submit" class="btn-primary" id="btn-save-and-share" style="flex:2;">💾 Save & Share</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ================= MODAL: LESSON VIEWER ================= -->
+    <div class="modal-overlay" id="modal-lesson-viewer">
+      <div class="modal-content">
+        <div class="section-header">
+          <h3 id="viewer-title" style="font-size:1rem; font-weight:700; color:var(--primary);">Lesson Viewer</h3>
+          <button class="btn-icon" id="btn-close-viewer">&times;</button>
+        </div>
+
+        <div class="lesson-viewer-body" id="viewer-content-body"></div>
+
+        <button class="btn-primary" onclick="document.getElementById('modal-lesson-viewer').classList.remove('active')">
+          ✓ Done Reading
+        </button>
+      </div>
+    </div>
+
+    <!-- ================= MODAL: DEVICE PAIRING & VERIFICATION ================= -->
+    <div class="modal-overlay" id="modal-pairing">
+      <div class="modal-content">
+        <div class="section-header">
+          <h3 style="font-size:1.1rem; font-weight:700;" data-i18n="teacherVerification">Device Verification</h3>
+          <button class="btn-icon" id="btn-close-pairing-modal">&times;</button>
+        </div>
+
+        <div style="text-align:center; padding: 12px 0;">
+          <div style="font-size: 2.2rem; margin-bottom: 6px;">📱 ⇄ 💻</div>
+          <h4 id="pairing-peer-name" style="font-size:1.05rem; font-weight:700; color:var(--text-main);">Rahul's Android Phone</h4>
+          <p id="pairing-peer-meta" style="font-size:0.8rem; color:var(--text-secondary);">Student &bull; Class 8 &bull; Govt High School</p>
+        </div>
+
+        <div class="form-group" style="margin: 12px 0;">
+          <label data-i18n="enterCode" style="font-weight:700; color:var(--primary); text-align:center; display:block;">
+            Enter 4-Digit Code Shown on Teacher's Screen:
+          </label>
+          <input type="text" class="form-control" id="input-pairing-code" maxlength="4" style="text-align:center; font-family:monospace; font-size:1.8rem; letter-spacing:8px; width:180px; margin: 6px auto;" placeholder="••••">
+          <div style="font-size:0.75rem; color:var(--text-secondary); text-align:center; margin-top:4px;">
+            This verifies a secure Bluetooth direct connection between both devices.
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button type="button" class="btn-secondary" style="flex:1;" id="btn-cancel-pairing">Cancel</button>
+          <button type="button" class="btn-primary" style="flex:2;" id="btn-confirm-pairing" data-i18n="verifyAndConnect">
+            ⚡ Verify & Pair
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="capacitor.js"></script>
+  <script src="js/i18n.js?v=2.9"></script>
+  <script src="js/db.js?v=2.9"></script>
+  <script src="js/transport.js?v=2.9"></script>
+  <script src="js/syncEngine.js?v=2.9"></script>
+  <script src="js/app.js?v=2.9"></script>
+</body>
+</html>

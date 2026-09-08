@@ -1,0 +1,64 @@
+name: Build iOS IPA (EduSync)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-ipa:
+    name: Build iOS App (.ipa)
+    runs-on: macos-14
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Web Application
+        run: npm run build
+
+      - name: Sync Capacitor iOS
+        run: npx cap sync ios
+
+      - name: Install CocoaPods
+        working-directory: ios/App
+        run: pod install
+
+      - name: Build Xcode Workspace
+        working-directory: ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace \
+                     -scheme App \
+                     -configuration Release \
+                     -sdk iphoneos \
+                     -derivedDataPath build \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGN_IDENTITY="" \
+                     clean build
+
+      - name: Package App into IPA (Payload Format)
+        working-directory: ios/App
+        run: |
+          mkdir -p Payload
+          cp -r build/Build/Products/Release-iphoneos/App.app Payload/EduSync.app
+          zip -r EduSync-v1.0.ipa Payload
+          ls -la EduSync-v1.0.ipa
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EduSync-iOS-IPA
+          path: ios/App/EduSync-v1.0.ipa
+          retention-days: 30
