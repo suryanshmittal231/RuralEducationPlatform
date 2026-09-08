@@ -49,6 +49,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -114,6 +115,7 @@ public class BluetoothP2PPlugin extends Plugin {
     private final Map<String, Thread> clientReaderThreads = new ConcurrentHashMap<>();
     private final Map<String, SocketSession> clientSessions = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, BluetoothDevice> connectedGattDevices = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, BluetoothDevice> subscribedGattDevices = new ConcurrentHashMap<>();
     private final Object gattNotificationLock = new Object();
     private final Queue<GattNotificationTask> gattNotificationQueue = new ArrayDeque<>();
     private boolean gattNotificationInProgress = false;
@@ -657,6 +659,7 @@ public class BluetoothP2PPlugin extends Plugin {
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                     Log.i(TAG, "GATT Client disconnected.");
                     connectedGattDevices.remove(addr);
+                    subscribedGattDevices.remove(addr);
                     if (activeSocket == null) {
                         JSObject obj = new JSObject();
                         obj.put("address", addr);
@@ -729,7 +732,14 @@ public class BluetoothP2PPlugin extends Plugin {
             try {
                 if (CLIENT_CONFIG_DESCRIPTOR.equals(descriptor.getUuid()) && value != null) {
                     descriptor.setValue(value);
-                    Log.d(TAG, "BLE data notifications configured for " + safeGetAddress(device));
+                    String address = safeGetAddress(device);
+                    if (Arrays.equals(value, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)) {
+                        subscribedGattDevices.put(address, device);
+                        Log.i(TAG, "BLE data notifications enabled for " + address);
+                    } else {
+                        subscribedGattDevices.remove(address);
+                        Log.i(TAG, "BLE data notifications disabled for " + address);
+                    }
                 }
                 if (responseNeeded && gattServer != null) {
                     gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
@@ -746,7 +756,7 @@ public class BluetoothP2PPlugin extends Plugin {
     };
 
     private void enqueueGattNotification(byte[] bytes, PluginCall call) {
-        List<BluetoothDevice> peers = new ArrayList<>(connectedGattDevices.values());
+        List<BluetoothDevice> peers = new ArrayList<>(subscribedGattDevices.values());
         synchronized (gattNotificationLock) {
             gattNotificationQueue.add(new GattNotificationTask(bytes, peers, call));
         }
@@ -788,12 +798,22 @@ public class BluetoothP2PPlugin extends Plugin {
                 try {
                     dataChar.setValue(task.payload);
                     gattNotificationInProgress = true;
-                    boolean accepted;
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        accepted = gattServer.notifyCharacteristicChanged(peer, dataChar, false, task.payload)
-                                == BluetoothGatt.GATT_SUCCESS;
-                    } else {
-                        accepted = gattServer.notifyCharacteristicChanged(peer, dataChar, false);
+                    boolean accepted = false;
+                    for (int attempt = 0; attempt < 3 && !accepted; attempt++) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            accepted = gattServer.notifyCharacteristicChanged(peer, dataChar, false, task.payload)
+                                    == BluetoothGatt.GATT_SUCCESS;
+                        } else {
+                            accepted = gattServer.notifyCharacteristicChanged(peer, dataChar, false);
+                        }
+                        if (!accepted) {
+                            try {
+                                Thread.sleep(40L);
+                            } catch (InterruptedException interrupted) {
+                                Thread.currentThread().interrupt();
+                                break;
+                            }
+                        }
                     }
                     if (accepted) {
                         return;
@@ -1394,6 +1414,7 @@ public class BluetoothP2PPlugin extends Plugin {
             }
             clientSessions.clear();
             connectedGattDevices.clear();
+            subscribedGattDevices.clear();
             for (Thread readerThread : clientReaderThreads.values()) {
                 try { readerThread.interrupt(); } catch (Throwable ignored) {}
             }
