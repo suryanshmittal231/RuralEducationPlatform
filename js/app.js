@@ -822,7 +822,7 @@ class EduSyncApp {
       alert(`Resource shared successfully!\n\n"${res.title}" was sent to ${studentName} over Bluetooth.`);
     } catch (err) {
       console.error('[Teacher] Error sharing resource:', err);
-      alert(`Error transferring "${res.title}" to student: ${err.message || err}`);
+      alert(`Resource saved on this device.\n\nBluetooth sharing is unavailable right now. Please reconnect the student device and try again.`);
     }
   }
 
@@ -915,7 +915,7 @@ class EduSyncApp {
         alert(`Resource shared successfully!\n\n"${newRes.title}" was created and sent to ${studentName} over Bluetooth.`);
       } catch (err) {
         console.error('[Teacher] Error auto-sharing resource:', err);
-        alert(`Resource created locally, but Bluetooth transfer failed: ${err.message || err}`);
+        alert(`Resource created and saved locally.\n\nBluetooth sharing is unavailable right now. Please reconnect the student device and try again.`);
       }
     } else {
       alert(`Resource "${newRes.title}" added to curriculum.`);
