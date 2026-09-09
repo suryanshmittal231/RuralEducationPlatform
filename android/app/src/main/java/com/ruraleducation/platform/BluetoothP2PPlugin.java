@@ -733,7 +733,8 @@ public class BluetoothP2PPlugin extends Plugin {
                 if (CLIENT_CONFIG_DESCRIPTOR.equals(descriptor.getUuid()) && value != null) {
                     descriptor.setValue(value);
                     String address = safeGetAddress(device);
-                    if (Arrays.equals(value, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)) {
+                    if (Arrays.equals(value, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
+                            || Arrays.equals(value, BluetoothGattDescriptor.ENABLE_INDICATION_VALUE)) {
                         subscribedGattDevices.put(address, device);
                         Log.i(TAG, "BLE data notifications enabled for " + address);
                     } else {
@@ -756,7 +757,9 @@ public class BluetoothP2PPlugin extends Plugin {
     };
 
     private void enqueueGattNotification(byte[] bytes, PluginCall call) {
-        List<BluetoothDevice> peers = new ArrayList<>(subscribedGattDevices.values());
+        Map<String, BluetoothDevice> eligiblePeers = new HashMap<>(connectedGattDevices);
+        eligiblePeers.putAll(subscribedGattDevices);
+        List<BluetoothDevice> peers = new ArrayList<>(eligiblePeers.values());
         synchronized (gattNotificationLock) {
             gattNotificationQueue.add(new GattNotificationTask(bytes, peers, call));
         }
