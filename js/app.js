@@ -819,7 +819,7 @@ class EduSyncApp {
         manifest: manifest
       });
 
-      alert(`"${res.title}" shared with ${studentName} successfully over Bluetooth.`);
+      alert(`Resource shared successfully!\n\n"${res.title}" was sent to ${studentName} over Bluetooth.`);
     } catch (err) {
       console.error('[Teacher] Error sharing resource:', err);
       alert(`Error transferring "${res.title}" to student: ${err.message || err}`);
@@ -912,7 +912,7 @@ class EduSyncApp {
           manifest: manifest
         });
 
-        alert(`Resource "${newRes.title}" created and shared with ${studentName} over Bluetooth.`);
+        alert(`Resource shared successfully!\n\n"${newRes.title}" was created and sent to ${studentName} over Bluetooth.`);
       } catch (err) {
         console.error('[Teacher] Error auto-sharing resource:', err);
         alert(`Resource created locally, but Bluetooth transfer failed: ${err.message || err}`);
