@@ -385,8 +385,14 @@ class EduSyncDatabase {
       const req = store.getAll();
       req.onsuccess = () => {
         let items = req.result || [];
-        if (filterClass) items = items.filter(r => r.class === filterClass.toString());
-        if (filterSubject && filterSubject !== 'all') items = items.filter(r => r.subject === filterSubject);
+        if (filterClass) {
+          const normalizedClass = filterClass.toString().trim();
+          items = items.filter(r => r.class?.toString().trim() === normalizedClass);
+        }
+        if (filterSubject && filterSubject !== 'all') {
+          const normalizedSubject = filterSubject.toString().trim().toLowerCase();
+          items = items.filter(r => r.subject?.toString().trim().toLowerCase() === normalizedSubject);
+        }
         resolve(items);
       };
       req.onerror = () => reject(req.error);

@@ -952,8 +952,8 @@ class EduSyncApp {
     if (window.eduSyncEngine && window.eduSyncEngine.latestTeacherManifest) {
       window.eduSyncEngine.latestTeacherManifest.forEach(tm => {
         if (!localMap.has(tm.resourceId)) {
-          if ((!this.selectedClass || tm.class === this.selectedClass.toString()) &&
-              (!this.selectedSubject || this.selectedSubject === 'all' || tm.subject?.toLowerCase() === this.selectedSubject.toLowerCase())) {
+          if ((!this.selectedClass || tm.class?.toString().trim() === this.selectedClass.toString().trim()) &&
+              (!this.selectedSubject || this.selectedSubject === 'all' || tm.subject?.toString().trim().toLowerCase() === this.selectedSubject.toLowerCase())) {
             combinedResources.push({
               ...tm,
               isAvailableOffline: false
